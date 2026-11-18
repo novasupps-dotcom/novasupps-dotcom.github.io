@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#111114">
+<title>Reparto · GGG Nova Supps</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<style>
+  :root { --bg: #F2F2F7; --paper: #fff; --ink: #1C1C1E; --muted: #6C6C70; --line: #E3E3E8; --red: #D9252F; --green: #1F7A3D; --violet: #5B4FCF; --amber: #9A5B00; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 16px 16px 40px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  header img { height: 34px; }
+  .tag { font-size: 12px; font-weight: 700; letter-spacing: .6px; color: #fff; background: var(--violet); border-radius: 999px; padding: 5px 10px; }
+  .card { background: var(--paper); border-radius: 22px; padding: 18px; margin-bottom: 12px; }
+  .sec { font-size: 12.5px; font-weight: 600; letter-spacing: .8px; color: var(--muted); margin-bottom: 8px; }
+  h1 { font-size: 24px; letter-spacing: -.3px; }
+  .muted { color: var(--muted); font-size: 14.5px; margin-top: 4px; }
+  .state { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-weight: 600; }
+  .state i { width: 12px; height: 12px; border-radius: 50%; background: #AEAEB2; flex: none; }
+  .state.on i { background: #34C759; animation: live 2s infinite; }
+  .state.err i { background: var(--red); }
+  @keyframes live { 0% { box-shadow: 0 0 0 0 rgba(52,199,89,.55); } 70% { box-shadow: 0 0 0 9px rgba(52,199,89,0); } 100% { box-shadow: 0 0 0 0 rgba(52,199,89,0); } }
+  .big { font-size: 30px; font-weight: 800; letter-spacing: -.5px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  #map { height: 260px; border-radius: 16px; overflow: hidden; margin-top: 12px; background: #e9e9ee; z-index: 0; }
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; border: 0; border-radius: 16px; font-size: 17px; font-weight: 700; padding: 16px; margin-top: 10px; cursor: pointer; text-decoration: none; color: #fff; background: var(--violet); }
+  .btn.green { background: var(--green); }
+  .btn.ghost { background: #E9E9EE; color: var(--ink); }
+  .btn[disabled] { opacity: .5; }
+  input { width: 100%; border: 1px solid var(--line); border-radius: 14px; padding: 14px; font-size: 16px; margin-top: 8px; background: #fff; }
+  .row { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; font-size: 15px; }
+  .row span:first-child { color: var(--muted); }
+  .note { background: #FFF4E0; color: var(--amber); border-radius: 14px; padding: 10px 12px; font-size: 14px; margin-top: 10px; }
+  .ok { background: #E7F5EC; color: var(--green); border-radius: 14px; padding: 12px; font-weight: 700; margin-top: 10px; text-align: center; }
+  .driver { width: 30px; height: 30px; border-radius: 50%; background: var(--violet); border: 3px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+  .dest { width: 18px; height: 18px; border-radius: 50%; background: var(--red); border: 3px solid #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3); }
+  .foot { text-align: center; color: #AEAEB2; font-size: 12px; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><img src="logo.png" alt="GGG · Nova Supps" height="34"><span class="tag">REPARTO</span></header>
+  <div id="app"><div class="card"><p class="muted">Cargando…</p></div></div>
+  <p class="foot">Mantén esta página abierta durante el reparto. Tu ubicación solo se comparte con el cliente de este pedido.</p>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+(function () {
+  var SUPABASE = "https://yqosgsrqffiyrwpgqxag.supabase.co";
+  var KEY = "sb_publishable_ZjMxBiCaO2YYrZxEX3xrdA_0zhjqJsl";
+  var q = new URLSearchParams(location.search);
+  var token = (q.get("t") || "").trim(), key = (q.get("k") || "").trim();
+  var app = document.getElementById("app");
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var rpc = function (fn, body) {
+    return fetch(SUPABASE + "/rest/v1/rpc/" + fn, { method: "POST", headers: { apikey: KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); });
+  };
+  var fmtDist = function (m) { return m == null ? "—" : m < 1000 ? m + " m" : (m / 1000).toFixed(1) + " km"; };
+
+  var order = null, live = null, watch = null, lock = null, last = null, lastSent = 0, sentPos = null, map = null, me = null, dest = null, fitted = false;
+
+  function fail(title, text) { app.innerHTML = '<div class="card"><h1>' + esc(title) + '</h1><p class="muted">' + esc(text) + "</p></div>"; }
+
+  function page() {
+    var hasDest = live.dest_lat != null;
+    app.innerHTML =
+      '<div class="card"><p class="sec">PEDIDO ' + esc(order ? order.folio : "") + "</p><h1>" + esc(order ? order.distributor : "Entrega") + "</h1>" +
+      '<p class="muted">' + esc(order ? [order.zone, order.pieces ? order.pieces + " piezas" : ""].filter(Boolean).join(" · ") : "") + "</p>" +
+      '<div class="state" id="state"><i></i><span>Ubicación en pausa</span></div>' +
+      '<div class="big" id="dist">' + (hasDest ? fmtDist(live.distance_m) : "Sin destino") + '</div><p class="muted" id="info">' +
+      (hasDest ? "Distancia al cliente" : "La tienda no fijó la ubicación del cliente; el cliente verá tu ubicación de todas formas.") + "</p>" +
+      '<div id="map"></div>' +
+      '<button class="btn" id="go">Compartir mi ubicación</button>' +
+      (hasDest ? '<a class="btn ghost" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=' + live.dest_lat + "," + live.dest_lng + '">Abrir ruta en Google Maps</a>' : "") +
+      "</div>" +
+      '<div class="card"><p class="sec">CONFIRMAR ENTREGA</p><p class="muted">Cuando entregues, escribe quién recibió y confirma. Se cierra el reparto y el cliente lo ve como entregado.</p>' +
+      '<input id="who" placeholder="Nombre de quien recibe" maxlength="80" autocomplete="off">' +
+      '<button class="btn green" id="done">Confirmar entrega</button><div id="doneMsg"></div></div>';
+    document.getElementById("go").onclick = toggle;
+    document.getElementById("done").onclick = deliver;
+    drawMap();
+  }
+
+  function drawMap() {
+    if (!window.L) return;
+    var c = live.lat != null ? [live.lat, live.lng] : hasDest() ? [live.dest_lat, live.dest_lng] : [19.4326, -99.1332];
+    map = L.map("map", { zoomControl: false }).setView(c, 14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+    if (hasDest()) dest = L.marker([live.dest_lat, live.dest_lng], { icon: L.divIcon({ className: "", html: '<div class="dest"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }) }).addTo(map);
+  }
+  function hasDest() { return live && live.dest_lat != null; }
+  function moveMe(lat, lng) {
+    if (!map) return;
+    if (!me) me = L.marker([lat, lng], { icon: L.divIcon({ className: "", html: '<div class="driver"></div>', iconSize: [30, 30], iconAnchor: [15, 15] }), zIndexOffset: 1000 }).addTo(map);
+    else me.setLatLng([lat, lng]);
+    if (!fitted) { map.fitBounds(hasDest() ? L.latLngBounds([[lat, lng], [live.dest_lat, live.dest_lng]]).pad(0.3) : L.latLngBounds([[lat, lng]]).pad(0.5)); fitted = true; }
+  }
+  function setState(cls, text) {
+    var el = document.getElementById("state");
+    if (!el) return;
+    el.className = "state " + cls;
+    el.lastElementChild.textContent = text;
+  }
+  function meters(a, b) {
+    var R = 6371000, r = Math.PI / 180, dLat = (b[0] - a[0]) * r, dLng = (b[1] - a[1]) * r;
+    var h = Math.pow(Math.sin(dLat / 2), 2) + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.pow(Math.sin(dLng / 2), 2);
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+
+  function send(force) {
+    if (!last) return;
+    var now = Date.now(), p = [last.coords.latitude, last.coords.longitude];
+    // Se manda cada 8 s o al moverse 30 m (lo que pase primero) para no gastar datos ni batería.
+    if (!force && now - lastSent < 8000 && (!sentPos || meters(sentPos, p) < 30)) return;
+    lastSent = now; sentPos = p;
+    rpc("b2b_live_push", { p_token: token, p_key: key, p_lat: p[0], p_lng: p[1], p_accuracy: last.coords.accuracy, p_speed: last.coords.speed, p_heading: last.coords.heading })
+      .then(function (r) {
+        if (!r || !r.ok) {
+          if (r && r.code === "closed") { stop(); setState("err", "El reparto ya se cerró"); }
+          else if (r && r.code === "invalid") { stop(); setState("err", "Enlace no válido"); }
+          return;
+        }
+        setState("on", "Compartiendo ubicación · " + new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+        if (r.distance_m != null) {
+          document.getElementById("dist").textContent = fmtDist(r.distance_m);
+          document.getElementById("info").textContent = r.near ? "Ya estás cerca: el cliente recibió el aviso" : "Distancia al cliente";
+        }
+      })
+      .catch(function () { setState("err", "Sin conexión · reintentando"); });
+  }
+  function start() {
+    if (!navigator.geolocation) return setState("err", "Este navegador no da ubicación");
+    setState("", "Pidiendo permiso de ubicación…");
+    watch = navigator.geolocation.watchPosition(function (pos) {
+      last = pos;
+      moveMe(pos.coords.latitude, pos.coords.longitude);
+      send(false);
+    }, function (err) {
+      setState("err", err.code === 1 ? "Permiso de ubicación negado: actívalo en el navegador" : "No se pudo leer tu ubicación");
+    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+    keepAwake();
+    document.getElementById("go").textContent = "Pausar ubicación";
+  }
+  function stop() {
+    if (watch != null) navigator.geolocation.clearWatch(watch);
+    watch = null;
+    if (lock) { lock.release().catch(function () {}); lock = null; }
+    var b = document.getElementById("go");
+    if (b) b.textContent = "Compartir mi ubicación";
+    setState("", "Ubicación en pausa");
+  }
+  function toggle() { if (watch == null) start(); else stop(); }
+  function keepAwake() {
+    if (!("wakeLock" in navigator)) return;
+    navigator.wakeLock.request("screen").then(function (l) { lock = l; }).catch(function () {});
+  }
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && watch != null) { keepAwake(); send(true); } });
+  // Si el teléfono no se mueve, igual se renueva la hora de «actualizado» cada 30 s.
+  setInterval(function () { if (watch != null && Date.now() - lastSent > 30000) send(true); }, 5000);
+
+  function deliver() {
+    var who = document.getElementById("who").value.trim();
+    var btn = document.getElementById("done"), msg = document.getElementById("doneMsg");
+    if (!who) { msg.innerHTML = '<div class="note">Escribe el nombre de quien recibe.</div>'; return; }
+    btn.disabled = true;
+    send(true);
+    rpc("b2b_live_deliver", { p_token: token, p_key: key, p_received_by: who })
+      .then(function (r) {
+        if (!r || !r.ok) { btn.disabled = false; msg.innerHTML = '<div class="note">No se pudo confirmar (enlace no válido).</div>'; return; }
+        stop();
+        closed("Entrega confirmada", "Recibió: " + who + ". Ya puedes cerrar esta página.");
+      })
+      .catch(function () { btn.disabled = false; msg.innerHTML = '<div class="note">Sin conexión. Intenta de nuevo.</div>'; });
+  }
+  function closed(title, text) {
+    app.innerHTML = '<div class="card"><p class="sec">PEDIDO ' + esc(order ? order.folio : "") + "</p><h1>" + esc(title) + '</h1><p class="muted">' + esc(text) + '</p><div class="ok">✓ Reparto cerrado</div></div>';
+  }
+
+  if (!/^[a-z0-9]{16,64}$/.test(token) || key.length < 16) return fail("Enlace incompleto", "Pide a la tienda el enlace de reparto completo.");
+  Promise.all([rpc("b2b_live_get", { p_token: token }), rpc("b2b_tracking_get", { p_token: token }).catch(function () { return null; })])
+    .then(function (r) {
+      live = r[0]; order = r[1];
+      if (!live) return fail("Reparto no encontrado", "La tienda aún no inicia el reparto en vivo de este pedido.");
+      if (live.delivered_at) return closed("Este pedido ya se entregó", live.received_by ? "Recibió: " + live.received_by : "El reparto está cerrado.");
+      if (!live.active) return fail("Reparto en pausa", "La tienda detuvo el reparto en vivo de este pedido.");
+      page();
+    })
+    .catch(function () { fail("Sin conexión", "No pudimos cargar el reparto. Revisa tu señal e intenta de nuevo."); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#F2F2F7">
+<title>Rastreo de pedido · GGG Nova Supps</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<style>
+  :root {
+    --bg: #F2F2F7; --paper: #fff; --ink: #1C1C1E; --muted: #6C6C70; --faint: #AEAEB2; --line: #E3E3E8;
+    --red: #D9252F; --green: #1F7A3D; --amber: #9A5B00; --amberSoft: #FFF4E0; --c: #C8962E;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 18px 16px 40px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; min-height: 38px; }
+  header img { height: 38px; width: auto; }
+  header .live { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  header .live i { width: 8px; height: 8px; border-radius: 50%; background: #34C759; animation: live 2s infinite; }
+  @keyframes live { 0% { box-shadow: 0 0 0 0 rgba(52,199,89,.55); } 70% { box-shadow: 0 0 0 8px rgba(52,199,89,0); } 100% { box-shadow: 0 0 0 0 rgba(52,199,89,0); } }
+  .card { background: var(--paper); border-radius: 24px; padding: 20px; margin-bottom: 12px; }
+  .hero .folio { font-size: 12.5px; font-weight: 600; letter-spacing: .8px; color: var(--muted); }
+  .hero h1 { font-size: 26px; line-height: 1.15; margin: 6px 0 4px; letter-spacing: -.4px; }
+  .hero p { color: var(--muted); font-size: 15px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; color: #fff; background: var(--c); margin-top: 12px; }
+  /* Barra de avance: todo en porcentajes (no se recalcula al girar el teléfono ni al ocultar la barra del navegador). */
+  .track { position: relative; margin: 34px 2px 4px; height: 36px; }
+  .lane { position: absolute; left: 16px; right: 16px; top: 15px; height: 6px; }
+  .rail { position: absolute; inset: 0; border-radius: 3px; background: var(--line); }
+  .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 3px; background: var(--c); transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
+  .truck { position: absolute; left: 0; top: -34px; transform: translateX(-50%); transition: left 1.2s cubic-bezier(.2,.8,.2,1); display: none; }
+  .truck span { display: inline-grid; place-items: center; background: var(--c); border-radius: 12px; padding: 5px 7px; animation: bump .9s ease-in-out infinite; }
+  .truck svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  @keyframes bump { 50% { transform: translateY(-3px); } }
+  .nodes { position: absolute; inset: 0; display: flex; justify-content: space-between; align-items: center; }
+  .node { position: relative; width: 32px; height: 32px; border-radius: 50%; background: #E9E9EE; display: grid; place-items: center; transition: background .5s; }
+  .node svg { width: 16px; height: 16px; stroke: var(--faint); fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .node.done { background: var(--c); }
+  .node.done svg { stroke: #fff; }
+  .node.current { background: #fff; box-shadow: inset 0 0 0 3px var(--c); }
+  .node.current svg { stroke: var(--c); }
+  .node.current::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; background: var(--c); opacity: .35; animation: pulse 1.6s ease-out infinite; z-index: -1; }
+  @keyframes pulse { 0% { transform: scale(.7); opacity: .45; } 100% { transform: scale(1.7); opacity: 0; } }
+  .node.waiting { background: var(--amberSoft); box-shadow: inset 0 0 0 2px var(--amber); }
+  .node.waiting svg { stroke: var(--amber); }
+  .dead .node.done, .dead .fill { background: var(--faint); }
+  .labels { display: grid; grid-template-columns: repeat(6, 1fr); margin: 6px -10px 0; }
+  .labels div { text-align: center; font-size: 10.5px; line-height: 1.25; letter-spacing: -.1px; color: var(--faint); padding: 0; overflow-wrap: normal; hyphens: none; }
+  .labels div.on { color: var(--ink); font-weight: 600; }
+  .labels div.cur { color: var(--ink); font-weight: 800; }
+  /* Línea de tiempo */
+  .timeline { margin-top: 22px; }
+  .tl { display: flex; gap: 12px; min-height: 52px; }
+  .anim .tl { opacity: 0; transform: translateY(6px); animation: in .5s forwards; }
+  @keyframes in { to { opacity: 1; transform: none; } }
+  .tl .dotcol { width: 14px; display: flex; flex-direction: column; align-items: center; flex: none; }
+  .tl .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); background: #fff; margin-top: 4px; }
+  .tl.done .dot { background: var(--c); border-color: var(--c); }
+  .tl.current .dot { border-color: var(--c); }
+  .tl.waiting .dot { background: var(--amber); border-color: var(--amber); }
+  .tl .bar { flex: 1; width: 2px; background: var(--line); margin: 3px 0; }
+  .tl.done .bar { background: var(--c); }
+  .tl h3 { font-size: 15.5px; font-weight: 600; }
+  .tl.todo h3 { color: var(--muted); font-weight: 500; }
+  .tl p { font-size: 13.5px; color: var(--muted); margin: 2px 0 10px; }
+  /* Mapa del reparto */
+  #map { height: 300px; border-radius: 16px; overflow: hidden; margin-top: 12px; background: #e9e9ee; z-index: 0; }
+  .maptop { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .big { font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+  .driver { width: 34px; height: 34px; border-radius: 50%; background: var(--c); border: 3px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,.25); display: grid; place-items: center; }
+  .driver svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; }
+  .dest { width: 18px; height: 18px; border-radius: 50%; background: var(--red); border: 3px solid #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3); }
+  /* Datos */
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; font-size: 15px; }
+  .row span:first-child { color: var(--muted); }
+  .row b { font-variant-numeric: tabular-nums; text-align: right; }
+  .total { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 10px; font-size: 17px; }
+  .sec { font-size: 12.5px; font-weight: 600; letter-spacing: .8px; color: var(--muted); margin: 0 0 10px; }
+  .meter { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 10px; }
+  .meter i { display: block; height: 100%; border-radius: 4px; transition: width 1s; }
+  .light { display: flex; align-items: center; gap: 10px; }
+  .light i { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+  .copy { border: 0; background: #E9E9EE; border-radius: 10px; padding: 4px 10px; font-size: 13px; font-weight: 600; cursor: pointer; margin-left: 6px; }
+  details summary { cursor: pointer; font-size: 15px; font-weight: 600; list-style: none; padding-top: 8px; }
+  details summary::-webkit-details-marker { display: none; }
+  details ul { list-style: none; margin-top: 10px; }
+  details li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+  details li span { flex: 1; }
+  details li b { white-space: nowrap; }
+  details li .lph { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 1px var(--line); object-fit: contain; }
+  /* 2.15.4 · Lo oculto se queda oculto aunque su clase tenga display (la barra de demostración salía en los pedidos reales). */
+  [hidden] { display: none !important; }
+  .wa { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; border: 0; border-radius: 18px; background: #1F7A3D; color: #fff; font-size: 17px; font-weight: 600; padding: 16px; text-decoration: none; }
+  .paybtn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 12px; border-radius: 16px; background: #009EE3; color: #fff; font-size: 16px; font-weight: 700; padding: 14px; text-decoration: none; }
+  .paynote { text-align: center; color: var(--muted); font-size: 12.5px; margin: 6px 0 14px; }
+  .paymsg { border-radius: 16px; padding: 12px 14px; font-size: 14.5px; margin-bottom: 12px; }
+  .paymsg.ok { background: #E7F5EC; color: var(--green); }
+  .paymsg.warn { background: var(--amberSoft); color: var(--amber); }
+  .paymsg.bad { background: #FDE8E8; color: #C4161C; }
+  .foot { text-align: center; color: var(--faint); font-size: 12px; margin-top: 18px; }
+  .msg { text-align: center; padding: 50px 20px; }
+  .msg h2 { font-size: 21px; margin-bottom: 8px; }
+  .msg p { color: var(--muted); }
+  .skel { height: 14px; border-radius: 7px; background: linear-gradient(90deg, #eee, #f6f6f6, #eee); background-size: 200% 100%; animation: sk 1.2s infinite; margin: 10px 0; }
+  @keyframes sk { to { background-position: -200% 0; } }
+  .banner { margin-top: 14px; border-radius: 14px; padding: 10px 12px; font-size: 14.5px; font-weight: 600; }
+  .banner.ok { background: #E7F5EC; color: var(--green); }
+  .banner.bad { background: #FDECEC; color: #C4161C; }
+  .demo { display: flex; align-items: center; gap: 10px; background: #1C1C1E; color: #fff; }
+  .demo b { display: block; font-size: 15px; }
+  .demo span { font-size: 13px; color: #C7C7CC; }
+  .demo button { margin-left: auto; border: 0; border-radius: 12px; padding: 8px 12px; font-weight: 700; background: #fff; color: #1C1C1E; cursor: pointer; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="logo.png" alt="GGG · Nova Supps" width="90" height="38">
+    <div class="live" id="live"><i></i><span>En vivo</span></div>
+  </header>
+  <main>
+    <div class="card demo" id="demobar" hidden><div><b>Demostración</b><span id="demostep">Así ve tu distribuidor todo el proceso</span></div><button id="demoagain" type="button">Repetir</button></div>
+    <div id="top"><div class="card"><div class="skel" style="width:40%"></div><div class="skel" style="width:70%;height:22px"></div><div class="skel"></div><div class="skel" style="width:85%"></div></div></div>
+    <div class="card" id="mapcard" hidden>
+      <div class="maptop"><div><p class="sec" style="margin:0">REPARTO EN VIVO</p><div class="big" id="mapdist">—</div><p style="color:var(--muted);font-size:13.5px" id="mapinfo"></p></div></div>
+      <div id="map"></div>
+    </div>
+    <div id="rest"></div>
+  </main>
+  <p class="foot">GGG · Nova Supps · Rastreo de pedidos para distribuidores</p>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+(function () {
+  // Base en línea de la tienda (la clave publicable es pública por diseño; las funciones solo
+  // devuelven UN pedido con su token: supabase/migrations/2.13.0_b2b.sql y 2.14.0_b2b_reparto.sql).
+  var SUPABASE = "https://yqosgsrqffiyrwpgqxag.supabase.co";
+  var KEY = "sb_publishable_ZjMxBiCaO2YYrZxEX3xrdA_0zhjqJsl";
+  var COLORS = { solicitado: "#C8962E", pagado: "#2E8B57", almacen: "#3A6EA5", en_camino: "#5B4FCF", cerca: "#D9252F", entregado: "#1F7A3D", vencido: "#C4161C", cancelado: "#8E8E93" };
+  var ICONS = {
+    solicitado: '<path d="M9 4h6v3H9z"/><path d="M15 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/><path d="M9 12h6M9 16h4"/>',
+    pagado: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/>',
+    almacen: '<path d="M3 21V8l9-5 9 5v13"/><path d="M7 21v-8h10v8M7 17h10"/>',
+    en_camino: '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62L18.3 8.38A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+    cerca: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+    entregado: '<path d="m16 16 2 2 4-4"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+    wait: '<path d="M5 22h14M5 2h14M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/>'
+  };
+  var svg = function (p) { return '<svg viewBox="0 0 24 24">' + p + "</svg>"; };
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var money = function (c) { return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format((Number(c) || 0) / 100); };
+  var when = function (iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    if (isNaN(d)) return esc(iso);
+    return d.toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" }) + " · " + d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+  };
+  var left = function (ms) {
+    if (ms <= 0) return "vencido";
+    var h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
+    if (h >= 48) return Math.floor(h / 24) + " días";
+    if (h >= 1) return h + " h " + m + " min";
+    return m + " min " + s + " s";
+  };
+  var ago = function (iso) {
+    var s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000));
+    return s < 60 ? "hace " + s + " s" : s < 3600 ? "hace " + Math.round(s / 60) + " min" : when(iso);
+  };
+  var params = new URLSearchParams(location.search);
+  var token = (params.get("t") || "").trim();
+  // 2.15.4 · Regreso desde Mercado Pago (liga de pago): estado del pago que acaba de hacer.
+  var mpBack = String(params.get("collection_status") || params.get("status") || "");
+  var PAY_MSG = {
+    approved: ["ok", "¡Pago recibido! Se reflejará en tu orden en cuanto lo confirmemos."],
+    pending: ["warn", "Tu pago está en revisión. Te avisamos cuando se acredite."],
+    in_process: ["warn", "Tu pago está en revisión. Te avisamos cuando se acredite."],
+    rejected: ["bad", "El pago no se completó. Puedes intentarlo de nuevo con otra tarjeta."],
+    failure: ["bad", "El pago no se completó. Puedes intentarlo de nuevo con otra tarjeta."],
+    null: ["bad", "No se completó el pago. Puedes intentarlo de nuevo."]
+  }[mpBack] || null;
+  var safePay = function (u) { return /^https:\/\/([a-z0-9-]+\.)*(mercadopago\.com(\.mx)?|mercadolibre\.com|mpago\.la)\//i.test(String(u || "")) ? String(u) : ""; };
+  var demo = params.get("demo");
+  var top = document.getElementById("top"), rest = document.getElementById("rest");
+  var data = null, live = null, firstPaint = true, detailsOpen = false, shownSig = "", shown = null, lastProgress = 0;
+  var FLOW = ["solicitado", "pagado", "almacen", "en_camino", "cerca", "entregado"];
+
+  // El repartidor puede cerrar la entrega (o entrar al radio «cerca») antes de que la app de la tienda
+  // vuelva a publicar el rastreo: la página lo refleja de inmediato con los datos del reparto en vivo.
+  function overlay(d, l) {
+    if (!d || !l || (d.status !== "en_camino" && d.status !== "cerca")) return d;
+    var to = l.delivered_at ? "entregado" : l.near_at && d.status === "en_camino" ? "cerca" : null;
+    if (!to) return d;
+    var idx = FLOW.indexOf(to), x = JSON.parse(JSON.stringify(d));
+    x.status = to;
+    x.statusLabel = to === "entregado" ? "Entregado" : "Cerca de tu zona";
+    var maxDone = 0;
+    x.steps.forEach(function (s, i) {
+      if (s.key === "pagado") { if (s.state === "done") maxDone = i; return; }
+      if (i <= idx) {
+        if (s.state !== "done") { s.state = "done"; s.at = s.key === "entregado" ? l.delivered_at : s.key === "cerca" ? l.near_at || l.delivered_at : s.at; }
+        maxDone = i;
+      } else s.state = i === idx + 1 ? "current" : "todo";
+    });
+    x.progress = maxDone / (FLOW.length - 1);
+    return x;
+  }
+  function refresh() {
+    if (!data) return;
+    var v = overlay(data, live), sig = v.status + "|" + data.updated_at;
+    if (sig !== shownSig) { shownSig = sig; shown = v; render(v); }
+  }
+
+  // ------------------------------------------------------------ demostración (?demo=1)
+  // Recorre todo el proceso: solicitado → pago → almacén → en camino (repartidor en el mapa) →
+  // cerca de tu zona → entregado, y vuelve a empezar.
+  var DEMO_STEPS = [
+    ["solicitado", "Solicitado", "Recibimos tu pedido"],
+    ["pagado", "Pago recibido", "Confirmamos tu pago"],
+    ["almacen", "En almacén", "Estamos preparando tu pedido"],
+    ["en_camino", "En camino", "Tu pedido va en camino"],
+    ["cerca", "Cerca de tu zona", "Tu pedido está por llegar"],
+    ["entregado", "Entregado", "Pedido entregado"]
+  ];
+  var DEMO_TEXT = ["Se levantó la orden de compra", "Se registró el pago", "Se surte en almacén", "El repartidor comparte su ubicación en vivo", "Entró al radio de «cerca»: aviso automático", "El repartidor confirmó la entrega"];
+  var DEMO_FROM = [25.6700, -100.3360], DEMO_TO = [25.6866, -100.3161];
+  var demoStage = 0, demoTick = 0, demoT0 = Date.now();
+  function demoOrder(i) {
+    var t = Date.now();
+    return {
+      store: "GGG · Nova Supps", folio: "OC-2026-0001", distributor: "Suplementos del Norte", zone: "Monterrey",
+      status: DEMO_STEPS[i][0], statusLabel: DEMO_STEPS[i][1],
+      created: new Date(demoT0).toISOString(), expires: new Date(demoT0 + 3 * 86400000).toISOString(), credit: false,
+      total: 2693231, paid: i >= 1 ? 2693231 : 0, balance: i >= 1 ? 0 : 2693231, pieces: 25, carrier: i >= 3 ? "Reparto propio" : "", tracking: "", eta: "",
+      whatsapp: "5613388882", delivery: i >= 3 ? "local" : "",
+      lines: [{ name: "Carnivor Mass 6 Lb · MuscleMeds", qty: 5 }, { name: "Syntha-6 5 Lb · BSN", qty: 7 }, { name: "L-Carnitine 60 Caps · GAT Sport", qty: 13 }],
+      steps: DEMO_STEPS.map(function (s, j) {
+        return { key: s[0], label: s[1], desc: s[2], at: j <= i ? new Date(t - (i - j) * 60000).toISOString() : "", state: j <= i ? "done" : j === i + 1 ? "current" : "todo" };
+      }),
+      progress: i / 5, updated_at: "demo-" + i
+    };
+  }
+  function demoLive(i, k) {
+    if (i < 3) return { active: false, lat: null, lng: null, dest_lat: DEMO_TO[0], dest_lng: DEMO_TO[1], near_m: 1500 };
+    var f = i === 3 ? Math.min(0.8, k / 9) : i === 4 ? 0.8 + Math.min(0.19, k * 0.04) : 1;
+    var lat = DEMO_FROM[0] + (DEMO_TO[0] - DEMO_FROM[0]) * f, lng = DEMO_FROM[1] + (DEMO_TO[1] - DEMO_FROM[1]) * f;
+    var dist = Math.round(2700 * (1 - f));
+    return {
+      active: i < 5, lat: lat, lng: lng, dest_lat: DEMO_TO[0], dest_lng: DEMO_TO[1], distance_m: dist, near_m: 1500, speed: 9,
+      updated_at: new Date().toISOString(), near_at: i >= 4 ? new Date().toISOString() : null,
+      delivered_at: i >= 5 ? new Date().toISOString() : null, received_by: i >= 5 ? "Ana López" : ""
+    };
+  }
+  function demoRun() {
+    var bar = document.getElementById("demobar");
+    bar.hidden = false;
+    var restart = function () { demoStage = 0; demoTick = 0; lastProgress = 0; if (driver) driver.setLatLng(DEMO_FROM); };
+    document.getElementById("demoagain").onclick = function () { restart(); demoShow(); };
+    setInterval(function () {
+      demoTick++;
+      var dur = demoStage === 3 ? 9 : demoStage === 5 ? 4 : 3;
+      if (demoTick > dur) { if (demoStage >= 5) restart(); else { demoTick = 0; demoStage++; } }
+      demoShow();
+    }, 1300);
+    demoShow();
+  }
+  function demoShow() {
+    document.getElementById("demostep").textContent = (demoStage + 1) + " de 6 · " + DEMO_TEXT[demoStage];
+    data = demoOrder(demoStage);
+    live = demoLive(demoStage, demoTick);
+    refresh();
+    showLive(live);
+  }
+
+  function message(title, text) {
+    document.getElementById("live").style.visibility = "hidden";
+    top.innerHTML = '<div class="card msg"><h2>' + esc(title) + "</h2><p>" + esc(text) + "</p></div>";
+    rest.innerHTML = "";
+  }
+
+  function render(d) {
+    var st = d.status, c = COLORS[st] || "#C8962E";
+    document.documentElement.style.setProperty("--c", c);
+    var dead = st === "vencido" || st === "cancelado";
+    var current = (d.steps || []).filter(function (s) { return s.state === "current"; })[0];
+    var headline = st === "vencido" ? "Tu pedido venció sin pago" : st === "cancelado" ? "Tu pedido fue cancelado"
+      : st === "entregado" ? "¡Tu pedido fue entregado!" : (d.steps.filter(function (s) { return s.key === st; })[0] || {}).desc || d.statusLabel;
+    var sub = current ? "Siguiente: " + (current.key === "pagado" ? "tu pago" : current.label) : st === "entregado" ? "Gracias por tu compra" : "";
+    var nodes = d.steps.map(function (s) {
+      var icon = s.state === "done" ? ICONS.check : s.state === "waiting" ? ICONS.wait : ICONS[s.key];
+      return '<div class="node ' + s.state + '" title="' + esc(s.label) + '">' + svg(icon) + "</div>";
+    }).join("");
+    var labels = d.steps.map(function (s) {
+      var short = s.key === "cerca" ? "Cerca" : s.key === "pagado" ? "Pagado" : s.label;
+      return '<div class="' + (s.state === "current" ? "cur" : s.state === "done" ? "on" : "") + '">' + esc(short) + "</div>";
+    }).join("");
+    var timeline = d.steps.map(function (s, i) {
+      var extra = s.state === "current" && s.key !== "pagado" ? " · en proceso" : "";
+      // 2.14.2: «Esperando tu pago» en lugar de «Pago recibido · esperando tu pago».
+      var title = s.key === "pagado" && s.state !== "done" ? (s.state === "waiting" ? "Pago pendiente" : "Esperando tu pago") : s.label;
+      return '<div class="tl ' + s.state + '" style="animation-delay:' + (i * 90) + 'ms"><div class="dotcol"><div class="dot"></div>' + (i < d.steps.length - 1 ? '<div class="bar"></div>' : "") +
+        "</div><div><h3>" + esc(title) + extra + "</h3><p>" + (s.at ? when(s.at) : s.key === "pagado" && s.state !== "done" ? "Cuando registremos tu pago, avanza solo" : esc(s.desc)) + "</p></div></div>";
+    }).join("");
+    var banner = st === "cancelado" ? '<div class="banner bad">Cancelado' + (d.cancelReason ? ": " + esc(d.cancelReason) : "") + "</div>"
+      : st === "entregado" ? '<div class="banner ok">Pedido entregado ✓</div>' : "";
+    top.innerHTML =
+      '<div class="card hero' + (firstPaint ? " anim" : "") + (dead ? " dead" : "") + '"><div class="folio">ORDEN ' + esc(d.folio) + "</div><h1>" + esc(headline) + "</h1><p>" + esc(d.distributor) + (sub ? " · " + esc(sub) : "") + "</p>" +
+      '<span class="pill">' + esc(d.statusLabel) + "</span>" +
+      '<div class="track"><div class="lane"><div class="rail"></div><div class="fill" id="fill"></div><div class="truck" id="truck"><span>' + svg(ICONS.en_camino) + "</span></div></div>" +
+      '<div class="nodes">' + nodes + '</div></div><div class="labels">' + labels + "</div>" + banner +
+      '<div class="timeline">' + timeline + "</div></div>" + (st === "solicitado" && !d.credit && d.balance > 0 && d.paid === 0 ? '<div class="card" id="validity"></div>' : "");
+    var ship = "";
+    if (d.carrier) {
+      ship = '<div class="card"><p class="sec">ENVÍO</p>' +
+        '<div class="row"><span>Entrega</span><b>' + esc(d.carrier) + "</b></div>" +
+        (d.tracking ? '<div class="row"><span>Guía</span><b>' + esc(d.tracking) + '<button class="copy" id="copy">Copiar</button></b></div>' : "") +
+        (d.eta ? '<div class="row"><span>Llega aprox.</span><b>' + esc(d.eta) + "</b></div>" : "") +
+        (d.zone ? '<div class="row"><span>Zona</span><b>' + esc(d.zone) + "</b></div>" : "") + "</div>";
+    }
+    var lines = (d.lines || []).map(function (l) {
+      var ph = /^https:\/\//.test(String(l.photo || "")) ? '<img class="lph" src="' + esc(l.photo) + '" alt="" loading="lazy">' : "";
+      return "<li>" + ph + "<span>" + esc(l.name) + "</span><b>× " + esc(l.qty) + "</b></li>";
+    }).join("");
+    var wa = d.whatsapp ? '<a class="wa" href="https://wa.me/52' + esc(String(d.whatsapp).replace(/\D/g, "").slice(-10)) + "?text=" +
+      encodeURIComponent("Hola, tengo una pregunta sobre mi pedido " + d.folio) + '" target="_blank" rel="noopener">' +
+      '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>Escríbenos por WhatsApp</a>' : "";
+    rest.innerHTML = (PAY_MSG && d.balance > 0 && !dead ? '<div class="paymsg ' + PAY_MSG[0] + '">' + esc(PAY_MSG[1]) + "</div>" : "") + ship +
+      '<div class="card"><p class="sec">RESUMEN</p>' +
+      '<div class="row"><span>Piezas</span><b>' + esc(d.pieces) + "</b></div>" +
+      '<div class="row"><span>Pagado</span><b>' + money(d.paid) + "</b></div>" +
+      (d.balance > 0 && !dead ? '<div class="row"><span>Saldo</span><b style="color:var(--amber)">' + money(d.balance) + "</b></div>" : "") +
+      (d.due && d.balance > 0 && !dead ? '<div class="row"><span>Fecha de pago</span><b>' + esc(new Date(d.due).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })) + "</b></div>" : "") +
+      '<div class="row total"><span>Total</span><b>' + money(d.total) + "</b></div>" +
+      (d.balance > 0 && !dead && safePay(d.payUrl) && !(PAY_MSG && PAY_MSG[0] === "ok")
+        ? '<a class="paybtn" href="' + esc(safePay(d.payUrl)) + '" rel="noopener"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Pagar ' + money(d.balance) + ' con tarjeta</a><p class="paynote">Pago seguro con Mercado Pago</p>'
+        : "") +
+      "<details id=\"det\"" + (detailsOpen ? " open" : "") + "><summary>Ver productos (" + (d.lines || []).length + ")</summary><ul>" + lines + "</ul></details></div>" + wa +
+      '<p class="foot" id="upd"></p>';
+    document.getElementById("det").addEventListener("toggle", function (e) { detailsOpen = e.target.open; });
+    var fill = document.getElementById("fill"), truck = document.getElementById("truck");
+    var target = dead ? 0 : Math.max(0, Math.min(1, d.progress || 0));
+    var moving = st === "en_camino" || st === "cerca";
+    var place = function () {
+      fill.style.width = target * 100 + "%";
+      if (moving) { truck.style.display = "block"; truck.style.left = target * 100 + "%"; }
+    };
+    if (firstPaint) setTimeout(place, 120);
+    else {
+      // Al cambiar de estado la barra avanza desde donde estaba (sin reiniciar desde cero).
+      fill.style.transition = "none"; truck.style.transition = "none";
+      fill.style.width = lastProgress * 100 + "%";
+      if (moving) { truck.style.display = "block"; truck.style.left = lastProgress * 100 + "%"; }
+      void fill.offsetWidth;
+      fill.style.transition = ""; truck.style.transition = "";
+      requestAnimationFrame(place);
+    }
+    lastProgress = target;
+    var copy = document.getElementById("copy");
+    if (copy) copy.onclick = function () { if (navigator.clipboard) navigator.clipboard.writeText(d.tracking); copy.textContent = "Copiado"; };
+    firstPaint = false;
+    tick();
+  }
+
+  // ------------------------------------------------------------ mapa del reparto
+  var map = null, driver = null, dest = null, line = null, anim = null, fitted = false;
+  function icon(cls, inner) { return L.divIcon({ className: "", html: '<div class="' + cls + '">' + (inner || "") + "</div>", iconSize: cls === "dest" ? [18, 18] : [34, 34], iconAnchor: cls === "dest" ? [9, 9] : [17, 17] }); }
+  function glide(marker, to) {
+    var from = marker.getLatLng(), t0 = performance.now(), dur = 1500;
+    if (anim) cancelAnimationFrame(anim);
+    var step = function (now) {
+      var k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      marker.setLatLng([from.lat + (to[0] - from.lat) * e, from.lng + (to[1] - from.lng) * e]);
+      if (k < 1) anim = requestAnimationFrame(step);
+    };
+    anim = requestAnimationFrame(step);
+  }
+  function showLive(l) {
+    var card = document.getElementById("mapcard");
+    var st = shown && shown.status;
+    var on = l && (l.active || l.delivered_at) && (st === "en_camino" || st === "cerca" || (st === "entregado" && l.delivered_at));
+    if (!on || !window.L) { card.hidden = true; return; }
+    card.hidden = false;
+    var info = document.getElementById("mapinfo"), dist = document.getElementById("mapdist");
+    if (l.delivered_at) { dist.textContent = "Entregado"; info.textContent = when(l.delivered_at) + (l.received_by ? " · Recibió " + l.received_by : ""); }
+    else if (l.lat == null) { dist.textContent = "Por salir"; info.textContent = "El repartidor aún no comparte su ubicación."; }
+    else {
+      var m = l.distance_m;
+      dist.textContent = m == null ? "En camino" : m < 1000 ? "A " + m + " m" : "A " + (m / 1000).toFixed(1) + " km";
+      var v = l.speed && l.speed > 1.5 ? l.speed : 8.3;
+      info.textContent = (m != null ? "Llega en ~" + Math.max(1, Math.round(m / v / 60)) + " min · " : "") + "Actualizado " + ago(l.updated_at);
+    }
+    if (!map) {
+      map = L.map("map", { zoomControl: false, attributionControl: true }).setView([l.lat || l.dest_lat || 19.43, l.lng || l.dest_lng || -99.13], 14);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+    }
+    if (l.dest_lat != null && !dest) dest = L.marker([l.dest_lat, l.dest_lng], { icon: icon("dest") }).addTo(map);
+    if (l.lat != null) {
+      if (!driver) driver = L.marker([l.lat, l.lng], { icon: icon("driver", svg(ICONS.en_camino)), zIndexOffset: 1000 }).addTo(map);
+      else glide(driver, [l.lat, l.lng]);
+      if (dest) {
+        if (!line) line = L.polyline([[l.lat, l.lng], [l.dest_lat, l.dest_lng]], { color: getComputedStyle(document.documentElement).getPropertyValue("--c"), weight: 3, dashArray: "6 8", opacity: .7 }).addTo(map);
+        else line.setLatLngs([[l.lat, l.lng], [l.dest_lat, l.dest_lng]]);
+      }
+      if (!fitted) { map.fitBounds(dest ? L.latLngBounds([[l.lat, l.lng], [l.dest_lat, l.dest_lng]]).pad(0.35) : L.latLngBounds([[l.lat, l.lng]]).pad(0.5)); fitted = true; }
+    } else if (dest && !fitted) { map.setView([l.dest_lat, l.dest_lng], 14); fitted = true; }
+    setTimeout(function () { map.invalidateSize(); }, 50);
+  }
+
+  function tick() {
+    if (!data) return;
+    var v = document.getElementById("validity");
+    if (v) {
+      var a = Date.parse(data.created), z = Date.parse(data.expires), ms = z - Date.now();
+      var ratio = z > a ? Math.max(0, Math.min(1, ms / (z - a))) : 0;
+      var color = ms <= 0 || ratio < 0.2 ? "#C4161C" : ratio < 0.5 ? "#9A5B00" : "#1F7A3D";
+      v.innerHTML = '<p class="sec">VIGENCIA DEL PEDIDO</p><div class="light"><i style="background:' + color + '"></i><div><b>' +
+        (ms > 0 ? "Paga en los próximos " + left(ms) : "El plazo de pago terminó") + '</b><p style="color:var(--muted);font-size:13.5px">Hasta el ' + when(data.expires) +
+        '</p></div></div><div class="meter"><i style="width:' + Math.round(ratio * 100) + "%;background:" + color + '"></i></div>';
+    }
+    var u = document.getElementById("upd");
+    if (u && data.updated_at) u.textContent = "Actualizado " + when(data.updated_at);
+    if (live && live.updated_at && !live.delivered_at && live.lat != null) {
+      var info = document.getElementById("mapinfo");
+      if (info) info.textContent = info.textContent.replace(/Actualizado .*$/, "Actualizado " + ago(live.updated_at));
+    }
+  }
+
+  function rpc(fn, body) {
+    return fetch(SUPABASE + "/rest/v1/rpc/" + fn, { method: "POST", headers: { apikey: KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); });
+  }
+  function loadLive() {
+    if (!data || (data.delivery !== "local" && data.carrier !== "Reparto propio")) return;
+    if (demo) return;
+    rpc("b2b_live_get", { p_token: token }).then(function (l) { if (l) { live = l; refresh(); showLive(l); } }).catch(function () {});
+  }
+  function load() {
+    if (demo) return;
+    if (!/^[a-z0-9]{16,64}$/.test(token)) return message("Enlace incompleto", "Abre el enlace completo que te mandamos por WhatsApp.");
+    rpc("b2b_tracking_get", { p_token: token })
+      .then(function (d) {
+        if (!d || !d.folio) return message("Tu pedido aún no está publicado", "El enlace cambió o la tienda todavía no lo publica. Pídenos el enlace actualizado por WhatsApp.");
+        data = d;
+        refresh();
+        loadLive();
+      })
+      .catch(function () { if (!data) message("Sin conexión", "No pudimos cargar tu pedido. Intenta de nuevo en un momento."); });
+  }
+  if (demo) demoRun(); else load();
+  setInterval(function () { if (!demo) load(); }, 45000);
+  // Con reparto en vivo, la ubicación se consulta cada 8 s mientras la página está a la vista.
+  setInterval(function () { if (!demo && !document.hidden && live && live.active) loadLive(); }, 8000);
+  setInterval(tick, 1000);
+  document.addEventListener("visibilitychange", function () { if (!demo && !document.hidden) load(); });
+})();
+</script>
+</body>
+</html>

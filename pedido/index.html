@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#F2F2F7">
+<title>Arma tu pedido · GGG Nova Supps</title>
+<style>
+  :root {
+    --bg: #F2F2F7; --paper: #fff; --ink: #1C1C1E; --muted: #6C6C70; --faint: #AEAEB2; --line: #E3E3E8;
+    --red: #D9252F; --redSoft: #FDECEC; --green: #1F7A3D; --greenSoft: #E7F5EC; --amber: #9A5B00; --amberSoft: #FFF4E0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  body.lock { overflow: hidden; }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 18px 16px 120px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; min-height: 38px; }
+  header img { height: 38px; width: auto; }
+  header a { font-size: 14px; font-weight: 600; color: var(--green); text-decoration: none; }
+  .card { background: var(--paper); border-radius: 24px; padding: 20px; margin-bottom: 12px; }
+  .hero .sec { margin: 0; }
+  .hero h1 { font-size: 26px; line-height: 1.15; margin: 6px 0 6px; letter-spacing: -.4px; }
+  .hero p { color: var(--muted); font-size: 15px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; background: var(--greenSoft); color: var(--green); margin-top: 12px; }
+  .sec { font-size: 12.5px; font-weight: 600; letter-spacing: .8px; color: var(--muted); margin: 18px 4px 10px; }
+  /* Buscador con «Filtrar» adentro (igual que Vender en la app). */
+  .search { display: flex; align-items: center; gap: 8px; background: #E9E9EE; border-radius: 999px; padding: 6px 6px 6px 16px; height: 54px; }
+  .search > svg { width: 20px; height: 20px; stroke: var(--muted); fill: none; stroke-width: 2; flex: none; }
+  .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 16.5px; height: 100%; }
+  .search input::-webkit-search-cancel-button { display: none; }
+  .fbtn { flex: none; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 999px; background: var(--red); color: #fff; font-size: 15px; font-weight: 700; padding: 0 16px; height: 42px; }
+  .fbtn svg { width: 17px; height: 17px; stroke: #fff; fill: none; stroke-width: 2.2; }
+  .fbtn i { font-style: normal; min-width: 20px; height: 20px; border-radius: 10px; background: #fff; color: var(--red); font-size: 12px; display: grid; place-items: center; padding: 0 5px; }
+  .fsum2 { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 16px 4px 0; }
+  .fsum2 b { font-size: 22px; letter-spacing: -.3px; }
+  .fsum2 span { min-width: 30px; height: 26px; border-radius: 13px; background: #E9E9EE; color: var(--muted); font-size: 13px; font-weight: 700; display: grid; place-items: center; padding: 0 8px; }
+  /* Hoja «Filtrar productos» */
+  .fsheet { position: fixed; inset: 0; z-index: 30; display: none; }
+  .fsheet.on { display: block; }
+  .fsheet .dim { position: absolute; inset: 0; background: rgba(0,0,0,.38); }
+  .fsheet .panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: 88vh; display: flex; flex-direction: column; background: #fff; border-radius: 24px 24px 0 0; padding: 10px 18px calc(14px + env(safe-area-inset-bottom)); animation: up .22s ease-out; }
+  @keyframes up { from { transform: translateY(40%); opacity: .6; } to { transform: none; opacity: 1; } }
+  .fsheet .handle { width: 38px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto 10px; }
+  .fsheet .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+  .fsheet .head b { font-size: 19px; font-weight: 800; }
+  .fsheet .head div { display: flex; align-items: center; gap: 8px; }
+  .reset { border: 0; border-radius: 999px; background: #F2F2F7; color: var(--red); font-size: 13px; font-weight: 700; padding: 6px 11px; }
+  .xbtn { width: 34px; height: 34px; border-radius: 17px; border: 0; background: #F2F2F7; display: grid; place-items: center; }
+  .xbtn svg { width: 16px; height: 16px; stroke: var(--ink); fill: none; stroke-width: 2.4; }
+  .fbody { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; min-height: 0; padding-bottom: 6px; }
+  .quick { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .qc { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; background: #F2F2F7; padding: 8px 14px; font-size: 14px; font-weight: 600; }
+  .qc.on { background: var(--red); border-color: var(--red); color: #fff; font-weight: 700; }
+  .qc svg { width: 13px; height: 13px; stroke: #fff; fill: none; stroke-width: 3; }
+  .acc { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; margin-bottom: 10px; }
+  .acch { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 0; background: #fff; padding: 14px; text-align: left; }
+  .acch b { font-size: 16px; font-weight: 700; }
+  .acch span { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: var(--muted); }
+  .acch span.on { color: var(--red); }
+  .acch svg { width: 16px; height: 16px; stroke: var(--muted); fill: none; stroke-width: 2.2; transition: transform .2s; }
+  .acc.open .acch svg { transform: rotate(180deg); }
+  .ck { width: 100%; display: flex; align-items: center; gap: 14px; border: 0; border-top: 1px solid var(--line); background: #fff; padding: 13px 14px; text-align: left; font-size: 16px; }
+  .ck.on { background: var(--redSoft); color: var(--red); font-weight: 700; }
+  .ck i { width: 26px; height: 26px; border-radius: 7px; border: 2px solid #C7C7CC; display: grid; place-items: center; flex: none; }
+  .ck.on i { background: var(--red); border-color: var(--red); }
+  .ck i svg { width: 15px; height: 15px; stroke: #fff; fill: none; stroke-width: 3; }
+  .ck em { flex: 1; font-style: normal; }
+  .ck small { color: var(--muted); font-size: 14.5px; font-weight: 600; }
+  .fgo { width: 100%; border: 0; border-radius: 999px; background: var(--red); color: #fff; font-size: 17px; font-weight: 700; padding: 16px; margin-top: 10px; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+  @media (min-width: 600px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .p { background: var(--paper); border-radius: 24px; padding: 10px; display: flex; flex-direction: column; gap: 6px; position: relative; }
+  .p.sel { box-shadow: inset 0 0 0 2px var(--green); }
+  /* Foto cuadrada que siempre muestra el producto completo (alto o ancho), sin recortes. */
+  .ph { position: relative; width: 100%; padding-top: 100%; border-radius: 14px; background: #fff; overflow: hidden; }
+  .ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .ph svg { position: absolute; left: 30%; top: 30%; width: 40%; height: 40%; stroke: #D1D1D6; fill: none; stroke-width: 1.5; }
+  .ribbon { position: absolute; top: 10px; left: 10px; width: auto; padding: 5px 11px; border-radius: 999px; background: linear-gradient(135deg, rgba(22,163,74,0.92), rgba(16,185,129,0.88)); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.35); color: #fff; font-size: 9px; font-weight: 800; letter-spacing: .25px; text-transform: uppercase; text-align: center; transform: none; box-shadow: 0 4px 12px rgba(22,163,74,0.22); z-index: 2; pointer-events: none; line-height: 1.1; }
+  .open { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .zoom { position: absolute; right: 6px; bottom: 6px; width: 28px; height: 28px; border-radius: 50%; background: rgba(28,28,30,.55); display: grid; place-items: center; }
+  .zoom svg { position: static; width: 15px; height: 15px; stroke: #fff; fill: none; stroke-width: 2.2; }
+  .pick { border: 0; background: transparent; color: var(--green); font-weight: 700; font-size: 13.5px; padding: 4px 0 0; text-align: left; }
+  .fsum { font-size: 12.5px; color: var(--green); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Ficha del producto */
+  .big { position: relative; background: #fff; border-radius: 24px; overflow: hidden; display: flex; justify-content: center; }
+  .big .ribbon { top: 10px; left: 10px; width: auto; font-size: 10.5px; padding: 5px 11px; border-radius: 999px; transform: none; }
+  .big img { display: block; width: 100%; max-height: 62vh; object-fit: contain; }
+  .big svg { width: 50%; height: 220px; stroke: #D1D1D6; fill: none; stroke-width: 1.2; }
+  .dt h2 { font-size: 22px; letter-spacing: -.3px; line-height: 1.2; margin: 6px 0; }
+  .dt .price b { font-size: 22px; }
+  .flv { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .flv:last-child { border-bottom: 0; }
+  .flv span { flex: 1; font-size: 15.5px; font-weight: 600; }
+  .flv .step { width: 132px; flex: none; }
+  .brand { font-size: 11.5px; font-weight: 700; letter-spacing: .5px; color: var(--muted); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .name { font-size: 14.5px; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 36px; }
+  .meta { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .price { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+  .price b { font-size: 16px; font-variant-numeric: tabular-nums; }
+  .price s { font-size: 12.5px; color: var(--faint); }
+  .add { border: 0; border-radius: 12px; background: var(--ink); color: #fff; font-weight: 700; font-size: 14.5px; height: 40px; width: 100%; }
+  .add:disabled { background: #E9E9EE; color: var(--faint); cursor: default; }
+  .step { display: flex; align-items: center; gap: 6px; height: 40px; }
+  .step button { width: 40px; height: 40px; border: 0; border-radius: 12px; background: #E9E9EE; font-size: 20px; font-weight: 700; line-height: 1; flex: none; }
+  .step button.plus { background: var(--green); color: #fff; }
+  .step input { flex: 1; min-width: 0; height: 40px; border: 0; border-radius: 12px; background: #F2F2F7; text-align: center; font-size: 16px; font-weight: 700; outline: 0; }
+  .flav { width: 100%; border: 0; border-radius: 10px; background: #F2F2F7; padding: 8px 10px; font-size: 14px; outline: 0; }
+  .stock { font-size: 12px; font-weight: 600; color: var(--amber); }
+  .empty { text-align: center; color: var(--muted); padding: 30px 10px; }
+  .more { display: block; width: 100%; margin-top: 12px; border: 0; border-radius: 16px; background: var(--paper); padding: 14px; font-weight: 600; }
+  /* Barra fija */
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: rgba(242,242,247,.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); transform: translateY(110%); transition: transform .25s; z-index: 5; }
+  .bar.on { transform: none; }
+  .bar .in { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+  .bar .sum { flex: 1; min-width: 0; }
+  .bar .sum b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .bar .sum span { font-size: 13px; color: var(--muted); }
+  .cta { border: 0; border-radius: 16px; background: var(--green); color: #fff; font-size: 16.5px; font-weight: 700; padding: 14px 20px; }
+  .cta:disabled { background: #C7C7CC; }
+  .cta.full { width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; text-decoration: none; }
+  .cta.dark { background: var(--ink); }
+  .ghost { width: 100%; border: 0; border-radius: 16px; background: #E9E9EE; font-size: 16px; font-weight: 600; padding: 14px; margin-top: 8px; }
+  /* Revisión (pantalla completa) */
+  .sheet { position: fixed; inset: 0; background: var(--bg); z-index: 10; overflow-y: auto; -webkit-overflow-scrolling: touch; display: none; }
+  .sheet.on { display: block; }
+  .sheet .wrap { padding-bottom: 40px; }
+  .top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .top button { border: 0; background: transparent; color: var(--red); font-size: 17px; font-weight: 600; padding: 6px 0; }
+  .top h2 { flex: 1; text-align: center; font-size: 17px; margin-right: 54px; }
+  .line { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .line:last-child { border-bottom: 0; }
+  .line .ph { width: 52px; height: 52px; padding-top: 0; flex: none; border-radius: 10px; }
+  .line .t { flex: 1; min-width: 0; }
+  .line .t div { font-size: 15px; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .line .t span { font-size: 13px; color: var(--muted); }
+  .line .step { width: 116px; flex: none; gap: 4px; }
+  .line .step button { width: 36px; height: 36px; }
+  .line .step input { height: 36px; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; font-size: 15px; }
+  .row span:first-child { color: var(--muted); }
+  .row b { font-variant-numeric: tabular-nums; text-align: right; }
+  .row.off b { color: var(--green); }
+  .total { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 10px; font-size: 18px; }
+  .note { border-radius: 14px; padding: 10px 12px; font-size: 14px; margin-top: 10px; }
+  .note.ok { background: var(--greenSoft); color: var(--green); }
+  .note.warn { background: var(--amberSoft); color: var(--amber); }
+  .note.bad { background: var(--redSoft); color: #C4161C; }
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin: 12px 2px 6px; }
+  .field { width: 100%; border: 0; border-radius: 14px; background: #F2F2F7; padding: 13px 14px; font-size: 16px; outline: 0; }
+  textarea.field { min-height: 80px; resize: vertical; }
+  select.field { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, #8E8E93 50%), linear-gradient(135deg, #8E8E93 50%, transparent 50%); background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; color: var(--ink); }
+  .two { display: grid; grid-template-columns: 1fr 112px; gap: 10px; }
+  .pay { display: flex; gap: 12px; align-items: flex-start; margin: 8px 0 0; padding: 12px 14px; border-radius: 14px; background: #F2F2F7; color: var(--ink); font-size: 15px; font-weight: 600; cursor: pointer; }
+  .pay input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--ink); flex: 0 0 auto; }
+  .pay small { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; font-weight: 400; }
+  .pay.on { background: var(--paper); box-shadow: inset 0 0 0 2px var(--ink); }
+  .hint { color: var(--muted); font-size: 13px; margin: 2px 2px 0; }
+  .done { text-align: center; padding: 26px 10px 10px; }
+  .done .ok { width: 72px; height: 72px; border-radius: 50%; background: var(--greenSoft); display: grid; place-items: center; margin: 0 auto 14px; }
+  .done .ok svg { width: 38px; height: 38px; stroke: var(--green); fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .done h2 { font-size: 24px; letter-spacing: -.3px; }
+  .done p { color: var(--muted); margin-top: 8px; font-size: 15.5px; }
+  .code { display: inline-block; margin-top: 14px; padding: 8px 16px; border-radius: 12px; background: #F2F2F7; font-size: 20px; font-weight: 800; letter-spacing: 2px; }
+  .msg { text-align: center; padding: 50px 20px; }
+  .msg h2 { font-size: 21px; margin-bottom: 8px; }
+  .msg p { color: var(--muted); }
+  .skel { height: 14px; border-radius: 7px; background: linear-gradient(90deg, #eee, #f6f6f6, #eee); background-size: 200% 100%; animation: sk 1.2s infinite; margin: 10px 0; }
+  @keyframes sk { to { background-position: -200% 0; } }
+  .demo { display: flex; align-items: center; gap: 10px; background: #1C1C1E; color: #fff; }
+  .demo b { display: block; font-size: 15px; }
+  .demo span { font-size: 13px; color: #C7C7CC; }
+  .foot { text-align: center; color: var(--faint); font-size: 12px; margin-top: 18px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <header>
+    <img src="logo.png" alt="GGG · Nova Supps" width="90" height="38">
+    <a id="wa" href="#" hidden>WhatsApp</a>
+  </header>
+  <main id="main">
+    <div class="card"><div class="skel" style="width:40%"></div><div class="skel" style="width:70%;height:22px"></div><div class="skel"></div><div class="skel" style="width:85%"></div></div>
+  </main>
+  <p class="foot">GGG · Nova Supps · Pedidos para distribuidores</p>
+</div>
+<div class="bar" id="bar"><div class="in"><div class="sum"><b id="bartotal">$0.00</b><span id="barinfo">0 piezas</span></div><button class="cta" id="review" type="button">Revisar pedido</button></div></div>
+<div class="sheet" id="sheet"><div class="wrap" id="sheetin"></div></div>
+<div class="sheet" id="detail" style="z-index:20"><div class="wrap" id="detailin"></div></div>
+<div class="fsheet" id="fsheet"></div>
+<script>
+(function () {
+  // Base en línea de la tienda (la clave publicable es pública por diseño; las funciones solo
+  // devuelven el catálogo de un enlace activo y reciben pedidos validados:
+  // supabase/migrations/2.15.0_b2b_pedidos.sql).
+  var SUPABASE = "https://yqosgsrqffiyrwpgqxag.supabase.co";
+  var KEY = "sb_publishable_ZjMxBiCaO2YYrZxEX3xrdA_0zhjqJsl";
+  var PAGE = 60;
+  var params = new URLSearchParams(location.search);
+  var token = (params.get("l") || "").trim();
+  var demo = params.get("demo");
+  var data = null, products = [], byId = {};
+  var cart = {}, flavors = {}, flavorQty = {}, contact = {}, notes = "";
+  var detailId = "";
+  var query = "", shown = PAGE, sending = false;
+  // 2.15.3 · Filtro igual al de Vender: rápidos (existencia, precio), tipo de suplemento, marca y precio.
+  var fl = { tipos: [], marcas: [], precios: [], avail: false, sort: "" }, acc = { tipo: true, marca: false, precio: false };
+  var PRICES = [["p1", "Hasta $500", 0, 50000], ["p2", "$500 – $900", 50000, 90000], ["p3", "Más de $900", 90000, Infinity]];
+
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var money = function (c) { return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format((Number(c) || 0) / 100); };
+  var fold = function (s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); };
+  var pct = function (amount, bps) { return Math.round((amount * bps) / 10000); };
+  var plural = function (n, one, many) { return n + " " + (n === 1 ? one : many); };
+  var $ = function (id) { return document.getElementById(id); };
+  var ICON_JAR = '<svg viewBox="0 0 24 24"><path d="M8 3h8v3H8z"/><path d="M7 6h10a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/><path d="M9 11h6M9 15h6"/></svg>';
+  var ICON_SEARCH = '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
+  var ICON_CHECK = '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>';
+  var ICON_SLIDERS = '<svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>';
+  var ICON_X = '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+  var ICON_DOWN = '<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>';
+  var ICON_ZOOM = '<svg viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
+
+  // ------------------------------------------------------------ memoria de la pestaña
+  // 2.15.2 · Cada vez que se abre el enlace empieza en limpio: sin pedidos anteriores ni datos de
+  // otra persona. Solo la pestaña abierta recuerda el carrito (por si se recarga la página).
+  var LS = "nova-pedido-" + (demo ? "demo" : token);
+  try { Object.keys(localStorage).forEach(function (k) { if (k.indexOf("nova-pedido-") === 0) localStorage.removeItem(k); }); } catch (e) {}
+  function load() {
+    try {
+      var s = JSON.parse(sessionStorage.getItem(LS) || "{}");
+      cart = s.cart || {}; flavors = s.flavors || {}; flavorQty = s.flavorQty || {};
+    } catch (e) {}
+  }
+  function save() {
+    try { sessionStorage.setItem(LS, JSON.stringify({ cart: cart, flavors: flavors, flavorQty: flavorQty })); } catch (e) {}
+  }
+
+  // ------------------------------------------------------------ precios
+  var link = function () { return (data && data.link) || {}; };
+  var tierBps = function () { return Math.max(0, Number(link().tier_bps) || 0); };
+  var yourPrice = function (p) { return Math.round((Number(p.price) * (10000 - tierBps())) / 10000); };
+  /** Mismo cálculo que la app (descuento por nivel y luego por volumen, o solo el mayor). */
+  function quote(subtotal) {
+    var c = data.catalog;
+    // Montos en centavos (como el subtotal): $5,000, $10,000.01 y $15,000.01.
+    var rules = [{ min: 0, bps: 0, shipping: "Costo de envío absorbido por el cliente según localidad" }, { min: 500000, bps: 300, shipping: "Costo de envío absorbido por el cliente según localidad" }, { min: 1000001, bps: 850, shipping: "Envío incluido" }, { min: 1500001, bps: 1500, shipping: "Envío incluido" }];
+    var activeRule = subtotal > 0 ? rules.filter(function (r) { return subtotal >= r.min; }).reduce(function (b, r) { return !b || r.bps >= b.bps ? r : b; }, null) : null; var reached = activeRule ? activeRule.bps : 0;
+    var next = rules.filter(function (r) { return r.min > subtotal && r.bps > reached; })[0] || null;
+    var t = tierBps(), v = reached;
+    if (c.stack === "mejor") { if (t >= v) v = 0; else t = 0; }
+    var td = pct(subtotal, t), vd = pct(subtotal - td, v);
+    return { subtotal: subtotal, tierBps: t, tierDiscount: td, volumeBps: v, volumeDiscount: vd, shippingText: activeRule ? activeRule.shipping : "", total: Math.max(0, subtotal - td - vd), next: next ? { missing: next.min - subtotal, bps: next.bps } : null };
+  }
+  var bpsLabel = function (b) { return String(Math.round(b) / 100).replace(/\.0+$/, "") + " %"; };
+  function lines() {
+    return Object.keys(cart).filter(function (id) { return cart[id] > 0 && byId[id]; }).map(function (id) { return { p: byId[id], qty: cart[id] }; });
+  }
+  function totals() {
+    var ls = lines();
+    var subtotal = ls.reduce(function (s, l) { return s + Number(l.p.price) * l.qty; }, 0);
+    var q = quote(subtotal); var z = (contact && contact.zone) || "local"; var allInStock = ls.length > 0 && ls.every(function (l) { return hasStock(l.p); }); var shipCost = 0, shipLabel = q.shippingText; if (subtotal > 0) { if (subtotal >= 1000100) { shipCost = 0; shipLabel = "Envío incluido"; } else if (z === "local" && subtotal >= 120000) { shipCost = 0; shipLabel = "Sin costo (cobertura local)"; } else { shipCost = 0; shipLabel = "Por confirmar según localidad (a cargo del cliente)"; } } q.shippingCost = shipCost; q.shippingText = shipLabel; q.zone = z; q.total = q.total + shipCost; return { lines: ls, pieces: ls.reduce(function (n, l) { return n + l.qty; }, 0), q: q };
+  }
+  var limited = function () { return data && data.catalog.allowBackorder === false; };
+  var maxOf = function (p) { return limited() && p.avail != null ? Math.max(0, Number(p.avail)) : 9999; };
+  /** Sabores del producto («Varios (3): Chocolate, Vainilla, Fresa…» → 3 sabores; «…» = hay más). */
+  function flavorList(p) {
+    var raw = String(p.flavors || "");
+    var t = raw.replace(/^\s*varios\s*(\(\d+\))?\s*:?\s*/i, "");
+    if (/^\s*(único|unico|n\/a|-)?\s*$/i.test(t)) return [];
+    var seen = {};
+    return t.split(/[,;\/]/).map(function (f) { return f.replace(/…|\.\.\./g, "").trim(); }).filter(function (f) {
+      var k = fold(f); if (f.length < 2 || seen[k]) return false; seen[k] = 1; return true;
+    }).slice(0, 30);
+  }
+  function moreFlavors(p) {
+    var raw = String(p.flavors || ""), m = /\((\d+)\)/.exec(raw);
+    return /…|\.\.\./.test(raw) || (m && Number(m[1]) > flavorList(p).length);
+  }
+  var manyFlavors = function (p) { return flavorList(p).length > 1 || moreFlavors(p); };
+  var assigned = function (id) { var f = flavorQty[id] || {}; return Object.keys(f).reduce(function (n, k) { return n + (f[k] || 0); }, 0); };
+  /** Nota del renglón: «Chocolate ×2, Vainilla ×1, sin preferencia ×1» y el comentario. */
+  function noteFor(id) {
+    var f = flavorQty[id] || {}, parts = [];
+    Object.keys(f).forEach(function (k) { if (f[k] > 0) parts.push(k + " ×" + f[k]); });
+    var rest = (cart[id] || 0) - assigned(id);
+    if (parts.length && rest > 0) parts.push("sin preferencia ×" + rest);
+    if (flavors[id]) parts.push(String(flavors[id]).trim());
+    return parts.join(", ").slice(0, 120);
+  }
+
+  // ------------------------------------------------------------ pantalla principal
+  window._svgFallback = function (label) { var t = String(label || "Nova Supps").slice(0, 18).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); return '<svg viewBox="0 0 120 120" width="84" height="84" aria-hidden="true"><rect x="34" y="20" width="52" height="14" rx="4" fill="#111"/><rect x="26" y="34" width="68" height="62" rx="10" fill="#f3f4f6" stroke="#d1d5db" stroke-width="2.5"/><rect x="34" y="48" width="52" height="28" rx="4" fill="#111" opacity=".08"/><text x="60" y="66" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" font-weight="700" fill="#374151">' + t + '</text></svg>'; };
+  function imgUrl(p) {
+    var u = String((p && (p.image_url || p.image || p.img || p.photo)) || "").trim();
+    if (!u) return "";
+    if (/^(https?:\/\/|data:|catalogue\/)/i.test(u)) return u;
+    if (u.indexOf("/storage/v1/object/public/") === 0) return SUPABASE + u;
+    if (u.indexOf("storage/v1/object/public/") === 0) return SUPABASE + "/" + u;
+    u = u.replace(/^\/+/, "");
+    return SUPABASE + "/storage/v1/object/public/" + (u.indexOf("/") > 0 ? u : "products/" + u);
+  }
+  function photo(p) { var u = imgUrl(p); var lbl = esc((p && (p.brand || p.cat || p.category || "Nova Supps")) || "Nova Supps"); return u ? '<img src="' + esc(u) + '" alt="' + esc((p && p.name) || "") + '" loading="lazy" decoding="async" data-brand="' + lbl + '" onerror="this.outerHTML=window._svgFallback(this.dataset.brand)">' : window._svgFallback(lbl); }
+  function controls(p) {
+    var n = cart[p.id] || 0, max = maxOf(p);
+    if (!n) return max > 0 ? '<button class="add" type="button" data-act="add" data-id="' + esc(p.id) + '" aria-label="Agregar ' + esc(p.name) + '">Agregar</button>' : '<button class="add" type="button" disabled>Agotado</button>';
+    return '<div class="step"><button type="button" data-act="minus" data-id="' + esc(p.id) + '" aria-label="Quitar uno de ' + esc(p.name) + '">−</button>' +
+      '<input inputmode="numeric" data-act="qty" data-id="' + esc(p.id) + '" value="' + n + '" aria-label="Cantidad de ' + esc(p.name) + '">' +
+      '<button class="plus" type="button" data-act="plus" data-id="' + esc(p.id) + '" aria-label="Agregar uno de ' + esc(p.name) + '">+</button></div>' +
+      (manyFlavors(p)
+        ? (noteFor(p.id) ? '<div class="fsum">' + esc(noteFor(p.id)) + "</div>" : "") +
+          '<button class="pick" type="button" data-act="open" data-id="' + esc(p.id) + '">' + (noteFor(p.id) ? "Cambiar sabores" : "Elegir sabores") + "</button>"
+        : "");
+  }
+  function hasStock(p) {
+    if (!p) return false;
+    if (limited() && p.avail != null) return Number(p.avail) > 0;
+    return !!p.in_stock;
+  }
+  function card(p) {
+    var off = tierBps() > 0, inStock = hasStock(p);
+    var meta = [p.servings ? p.servings + " servicios" : "", p.flavors && !/^(único|unico)$/i.test(p.flavors) ? p.flavors : ""].filter(Boolean).join(" · ");
+    return '<div class="p' + (cart[p.id] ? " sel" : "") + '" id="p-' + esc(p.id) + '">' +
+      '<div class="open" data-act="open" data-id="' + esc(p.id) + '" role="button" aria-label="Ver ' + esc(p.name) + '">' +
+      '<div class="ph">' + (inStock ? '<span class="ribbon">Entrega Inmediata</span>' : "") + photo(p) + (imgUrl(p) ? '<span class="zoom">' + ICON_ZOOM + "</span>" : "") + "</div>" +
+      '<div class="brand" style="margin-top:6px">' + esc(p.brand) + "</div>" +
+      '<div class="name">' + esc(p.name) + "</div></div>" +
+      (meta ? '<div class="meta">' + esc(meta) + "</div>" : "") +
+      '<div class="price"><b>' + money(yourPrice(p)) + "</b>" + (off ? "<s>" + money(p.price) + "</s>" : "") + "</div>" +
+      (limited() && p.avail != null && p.avail > 0 && p.avail < 10 ? '<div class="stock">Quedan ' + p.avail + "</div>" : "") +
+      (!inStock ? '<div class="stock">Sobre pedido</div>' : "") +
+      '<div class="ctl">' + controls(p) + "</div></div>";
+  }
+  var SEGMENT_RULES = [
+    ["Accesorios", /shaker|mezclador|cinturon|strap|guante|playera|ropa|accesorio|mochila|pastillero|termos?/],
+    ["Snacks", /barra|\bbar\b|snack|galleta|cafe|coffee|bebida|\bdrink\b|\blata\b|c4\s*energy|cookie|brownie|pancake|waffle|avena|cacahuate|peanut|comida|alimento|sandwich/],
+    ["Ganadores", /ganador|gainer|\bmass\b|hipercalor|serious\s*mass|super\s*mass|carnivor\s*mass|mass\s*tech|king\s*mass|mutant\s*mass|mass\s*extreme/],
+    ["Quemadores de Grasa", /quemador|termogen|thermogen|carnitin|carnigen|\bcla\b|lipo\s*6|lipodrene|hydroxycut|fat\s*burner|perdida\s*de\s*peso|control\s*de\s*peso|diuret/],
+    ["Vitaminas", /vitamin|omega|multivit|mineral|colageno|collagen|biotin|melatonin|probiot|enzim|digest|antioxid|articular|glucosamin|condroitin|\bmsm\b|hialuron|magnesi|\bzinc\b|\bzma\b|ashwagandha|salud|inmune|bienestar|salmon\s*oil|fish\s*oil|krill|\bd3\b|glutathione/],
+    ["Creatinas", /creatin|creapure|monohidrat|monohydrat/],
+    ["PWO", /pre.?entreno|pre.?entrenamiento|pre.?workout|\bpwo\b|pre.?train|oxido\s*nitrico|nitric\s*oxide|\bpump\b|venom|psychotic|nitraflex|cbum|\bjoker\b|nitro\s*test/],
+    ["Soporte hormonal", /hormonal|testo|testrol|tribulus|precursor|anabol|\bmaca\b|\bdhea\b|alpha/],
+    ["Aminoácidos", /amino|bcaa|\beaa\b|glutamin|arginin|citrulin|beta.?alanin|taurin|leucin|recupera|intra.?entreno|intra.?workout|hidratacion|electrolit/],
+    ["Proteínas", /proteina|whey|isolat|itholat|caseina|iso\s*100|nitro[-\s]*tech|syntha|hidrolizad|hydrolyz|suero|albumin|carnivor/]
+  ];
+  var TIPO_ORDER = ["Creatinas", "Proteínas", "PWO", "Aminoácidos", "Quemadores de Grasa", "Vitaminas", "Ganadores", "Soporte hormonal", "Snacks", "Accesorios", "Otros"];
+  function classifyTipo(p) {
+    var t = fold((p && (p.segment || p.category) || "") + " " + (p && p.name || ""));
+    for (var i = 0; i < SEGMENT_RULES.length; i++) if (SEGMENT_RULES[i][1].test(t)) return SEGMENT_RULES[i][0];
+    return "Otros";
+  }
+  var tipoOf = function (p) { return (p && p._tipo) || classifyTipo(p); };
+  var marcaOf = function (p) { return p.marca || p.brand || "Sin marca"; };
+  var bandOf = function (p) { var v = yourPrice(p); for (var i = 0; i < PRICES.length; i++) if (v >= PRICES[i][2] && v < PRICES[i][3]) return PRICES[i][0]; return ""; };
+  /** Productos que pasan la búsqueda y los filtros (sin `skip`, para contar opciones). */
+  function filtered(skip) {
+    var q = fold(query).split(/\s+/).filter(Boolean);
+    var out = products.filter(function (p) {
+      if (skip !== "tipo" && fl.tipos.length && fl.tipos.indexOf(tipoOf(p)) < 0) return false;
+      if (skip !== "marca" && fl.marcas.length && fl.marcas.indexOf(marcaOf(p)) < 0) return false;
+      if (skip !== "precio" && fl.precios.length && fl.precios.indexOf(bandOf(p)) < 0) return false;
+      if (fl.avail && (maxOf(p) <= 0 || !hasStock(p))) return false;
+      if (!q.length) return true;
+      var hay = fold(p.name + " " + p.brand + " " + p.segment + " " + p.category + " " + tipoOf(p) + " " + p.flavors);
+      return q.every(function (w) { return hay.indexOf(w) >= 0; });
+    }).sort(function (a, b) { return Number(hasStock(b)) - Number(hasStock(a)); });
+    if (fl.sort) out = out.slice().sort(function (a, b) { return fl.sort === "asc" ? a.price - b.price : b.price - a.price; });
+    return out;
+  }
+  var activeFilters = function () { return fl.tipos.length + fl.marcas.length + fl.precios.length + (fl.avail ? 1 : 0) + (fl.sort ? 1 : 0); };
+  function tipoList() {
+    var order = (data.catalog.tipos || []).slice();
+    products.forEach(function (p) { var t = tipoOf(p); if (order.indexOf(t) < 0) order.push(t); });
+    return order.filter(function (t) { return products.some(function (p) { return tipoOf(p) === t; }); });
+  }
+  function marcaList() {
+    var m = [];
+    products.forEach(function (p) { var b = marcaOf(p); if (m.indexOf(b) < 0) m.push(b); });
+    return m.sort(function (a, b) { return a.localeCompare(b, "es"); });
+  }
+  function renderGrid() {
+    var list = filtered();
+    var html = list.slice(0, shown).map(card).join("");
+    $("grid").innerHTML = html || '<div class="empty" style="grid-column:1/-1">No encontré productos con esa búsqueda.</div>';
+    $("more").hidden = list.length <= shown;
+    $("more").textContent = "Ver más productos (" + (list.length - shown) + ")";
+    var title = fl.tipos.length === 1 ? fl.tipos[0] : fl.marcas.length === 1 && !fl.tipos.length ? fl.marcas[0] : query.trim() ? "Resultados" : activeFilters() ? "Filtrados" : "Todos los productos";
+    $("count").innerHTML = "<b>" + esc(title) + "</b><span>" + list.length + "</span>";
+    var n = activeFilters();
+    $("fbtn").innerHTML = "▽ Filtrar" + (n ? "<i>" + n + "</i>" : "");
+  }
+  function renderMain() {
+    var l = link(), c = data.catalog;
+    var hello = l.general ? "Arma tu pedido" : "Hola, " + esc(l.name);
+    var sub = l.general
+      ? "Elige productos y cantidades del catálogo de distribuidores. Te confirmamos tu orden de compra por WhatsApp."
+      : "Elige productos y cantidades. Te confirmamos tu orden de compra con su folio y el enlace para seguirla.";
+    $("main").innerHTML =
+      (demo ? '<div class="card demo"><div><b>Demostración</b><span>Así ve tu distribuidor el catálogo para pedir</span></div></div>' : "") +
+      '<div class="card hero"><p class="sec">' + esc(String(c.store || "GGG · Nova Supps").toUpperCase()) + "</p><h1>" + hello + "</h1><p>" + sub + "</p>" +
+      (tierBps() ? '<span class="badge">Nivel ' + esc(l.tier_name) + " · " + bpsLabel(tierBps()) + " de descuento ya aplicado</span>" : "") +
+      (c.minOrder ? '<p style="margin-top:10px;font-size:14px">Pedido mínimo: <b>' + money(c.minOrder) + "</b></p>" : "") +
+      "</div>" +
+      '<div class="search">' + ICON_SEARCH + '<input id="q" type="search" placeholder="Buscar producto, marca o sabor" aria-label="Buscar producto" value="' + esc(query) + '">' +
+      '<button class="fbtn" id="fbtn" type="button" data-flt="open" aria-label="Filtrar">' + "▽ Filtrar</button></div>" + '<div id="qchips" style="display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none">' + ["Todos","Entrega inmediata","Creatinas","Proteínas","PWO","Aminos","Salud","Snacks"].map(function(cat){var on=cat==="Todos"?(!fl.avail&&!fl.tipos.length):cat==="Entrega inmediata"?fl.avail:fl.tipos.indexOf(cat)>=0;return '<button type="button" data-chip="'+cat+'" style="white-space:nowrap;border:1px solid '+(on?"#111":"#d4d4d8")+';background:'+(on?"#111":"#fff")+';color:'+(on?"#fff":"#111")+';border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer">'+cat+'</button>';}).join("") + '</div>' +
+      '<div class="fsum2" id="count"></div>' +
+      '<div class="grid" id="grid"></div><button class="more" id="more" type="button" hidden></button>';
+    $("q").addEventListener("input", function (e) { query = e.target.value; shown = PAGE; renderGrid(); });
+    $("more").addEventListener("click", function () { shown += PAGE; renderGrid(); }); function apply(){ shown=PAGE; renderGrid(); $("qchips").querySelectorAll("button").forEach(function(b){var c=b.getAttribute("data-chip"),on=c==="Todos"?(!fl.avail&&!fl.tipos.length):c==="Entrega inmediata"?fl.avail:fl.tipos.indexOf(c)>=0;b.style.borderColor=on?"#111":"#d4d4d8";b.style.background=on?"#111":"#fff";b.style.color=on?"#fff":"#111";}); } $("qchips").addEventListener("click", function(e){var b=e.target.closest("[data-chip]");if(!b)return;var c=b.getAttribute("data-chip");if(c==="Todos"){fl.avail=false;fl.tipos=[];}else if(c==="Entrega inmediata"){fl.avail=!fl.avail;}else{fl.tipos=fl.tipos.indexOf(c)>=0?[]:[c];}apply();});
+    renderGrid();
+    renderBar();
+    var wa = String(c.whatsapp || "").replace(/\D/g, "");
+    if (wa.length >= 10) { $("wa").hidden = false; $("wa").href = "https://wa.me/" + (wa.length === 10 ? "52" + wa : wa); }
+  }
+  function renderBar() {
+    var t = totals();
+    $("bar").classList.toggle("on", t.pieces > 0);
+    $("bartotal").textContent = money(t.q.total);
+    $("barinfo").textContent = plural(t.pieces, "pieza", "piezas") + " · " + plural(t.lines.length, "producto", "productos");
+  }
+  function setQty(id, n, from) {
+    var p = byId[id]; if (!p) return;
+    n = Math.max(0, Math.min(maxOf(p), Math.floor(Number(n) || 0)));
+    if (n) cart[id] = n; else { delete cart[id]; delete flavors[id]; delete flavorQty[id]; }
+    // Si bajan las piezas, se quitan de los sabores elegidos (del último al primero).
+    var f = flavorQty[id];
+    if (f) {
+      var keys = Object.keys(f);
+      for (var k = keys.length - 1; k >= 0 && assigned(id) > n; k--) f[keys[k]] = Math.max(0, f[keys[k]] - (assigned(id) - n));
+      Object.keys(f).forEach(function (key) { if (!f[key]) delete f[key]; });
+    }
+    save();
+    if (detailId === id && from !== "qty") renderDetail();
+    var el = $("p-" + id);
+    if (el && from !== "qty") { el.querySelector(".ctl").innerHTML = controls(p); }
+    if (el) el.classList.toggle("sel", n > 0);
+    renderBar();
+    if ($("sheet").classList.contains("on") && from !== "qty") renderReview();
+    else if ($("sheet").classList.contains("on")) renderReviewTotals();
+  }
+  function onAct(e) {
+    var ft = e.target.closest("[data-flt]");
+    if (ft) { if (e.type === "click") { if (ft.getAttribute("data-flt") === "quick-avail") { fl.avail = !fl.avail; shown = 40; renderGrid(); var qb = $("fquick"); if (qb) { qb.setAttribute("aria-pressed", fl.avail ? "true" : "false"); qb.style.background = fl.avail ? "#111" : "#fff"; qb.style.color = fl.avail ? "#fff" : "#111"; qb.style.borderColor = fl.avail ? "#111" : "#d4d4d8"; } } else onFilter(ft, ft.getAttribute("data-flt")); } return; }
+    var t = e.target.closest("[data-act]"); if (!t) return;
+    var id = t.getAttribute("data-id"), act = t.getAttribute("data-act");
+    if (e.type === "click") {
+      if (act === "add" || act === "plus") setQty(id, (cart[id] || 0) + 1);
+      else if (act === "minus") setQty(id, (cart[id] || 0) - 1);
+      else if (act === "remove") setQty(id, 0);
+      else if (act === "open") openDetail(id);
+      else if (act === "fplus" || act === "fminus") {
+        var p = byId[id], name = flavorList(p)[Number(t.getAttribute("data-f"))];
+        if (!name) return;
+        var fq = flavorQty[id] = flavorQty[id] || {};
+        if (act === "fplus") {
+          if ((cart[id] || 0) >= maxOf(p)) return;
+          fq[name] = (fq[name] || 0) + 1;
+          setQty(id, (cart[id] || 0) + 1);
+        } else if (fq[name] > 0) {
+          fq[name]--;
+          if (!fq[name]) delete fq[name];
+          setQty(id, (cart[id] || 0) - 1);
+        }
+      }
+    } else if (e.type === "input") {
+      if (act === "qty") setQty(id, String(t.value).replace(/\D/g, "") || 0, "qty");
+      if (act === "flavor") {
+        flavors[id] = t.value.slice(0, 120); save();
+        var c = $("p-" + id); if (c && byId[id] && cart[id]) c.querySelector(".ctl").innerHTML = controls(byId[id]);
+      }
+      if (act === "notes") { notes = t.value.slice(0, 600); save(); }
+      if (act === "contact") {
+        var k = t.getAttribute("data-k"), val = t.value.slice(0, 120);
+        if (k === "cp") { val = val.replace(/\D/g, "").slice(0, 5); if (t.value !== val) t.value = val; }
+        contact[k] = val; save();
+      }
+      if (act === "pay") pickPay(t.value);
+    } else if (e.type === "change" && act === "zone") { contact.zone = t.value; save(); renderReviewTotals(); var zh = $("zone-hint"); if (zh) zh.textContent = t.value === "paqueteria" ? "$250 MXN ($0-$10,000) · Envío incluido desde $10,001 · Entrega directa en instalaciones para gimnasios cerca de $15,000+" : "Envío gratis en existencia desde $1,200 MXN · $80 MXN si es menor a $1,200 MXN"; } else if (e.type === "change" && act === "pay") {
+      pickPay(t.value);
+    } else if (e.type === "change" && act === "qty") {
+      // Al salir del campo, la tarjeta muestra la cantidad que quedó (o «Agregar» si fue 0).
+      var p = byId[id], el = $("p-" + id);
+      if (p && el) el.querySelector(".ctl").innerHTML = controls(p);
+      if ($("sheet").classList.contains("on")) renderReview();
+    }
+  }
+  document.addEventListener("click", onAct);
+  document.addEventListener("input", onAct);
+  document.addEventListener("change", onAct);
+
+  // ------------------------------------------------------------ filtrar (hoja)
+  function openFilter() {
+    // La hoja se arma una vez (la animación de entrada no se repite al marcar opciones).
+    $("fsheet").innerHTML = '<div class="dim" data-flt="close"></div><div class="panel" role="dialog" aria-label="Filtrar productos"><div class="handle"></div>' +
+      '<div class="head"><b>Filtrar productos</b><div><button class="reset" type="button" data-flt="reset" hidden>Restablecer</button>' +
+      '<button class="xbtn" type="button" data-flt="close" aria-label="Cerrar filtros">' + ICON_X + "</button></div></div>" +
+      '<div class="fbody" id="fbody"></div><button class="fgo" id="fgo" type="button" data-flt="close"></button></div>';
+    $("fsheet").classList.add("on"); document.body.classList.add("lock");
+    renderFilter();
+  }
+  function closeFilter() {
+    $("fsheet").classList.remove("on");
+    if (!$("sheet").classList.contains("on") && !$("detail").classList.contains("on")) document.body.classList.remove("lock");
+    shown = PAGE; renderGrid();
+  }
+  function checkRow(act, value, label, count, on) {
+    return '<button class="ck' + (on ? " on" : "") + '" type="button" data-flt="' + act + '" data-v="' + esc(value) + '" aria-pressed="' + on + '" aria-label="' + esc(label) + '">' +
+      "<i>" + (on ? ICON_CHECK : "") + "</i><em>" + esc(label) + "</em><small>" + count + "</small></button>";
+  }
+  function accordion(key, title, chosen, allLabel, rows) {
+    var open = acc[key];
+    var summary = !chosen.length ? allLabel : chosen.length === 1 ? chosen[0] : chosen.length + " seleccionados";
+    return '<div class="acc' + (open ? " open" : "") + '"><button class="acch" type="button" data-flt="acc" data-v="' + key + '" aria-expanded="' + open + '"><b>' + title + "</b><span" + (chosen.length ? ' class="on"' : "") + ">" + esc(summary) + ICON_DOWN + "</span></button>" + (open ? rows : "") + "</div>";
+  }
+  function renderFilter() {
+    var body = $("fbody"); if (!body) return;
+    var top = body.scrollTop;
+    var count = function (skip, test) { return filtered(skip).filter(test).length; };
+    var quick = [
+      limited() ? ["avail", "En existencia", fl.avail] : null,
+      ["asc", "Menor precio", fl.sort === "asc"],
+      ["desc", "Mayor precio", fl.sort === "desc"],
+    ].filter(Boolean);
+    var tipos = tipoList(), marcas = marcaList();
+    var html = '<div class="quick">' + quick.map(function (c) {
+        return '<button class="qc' + (c[2] ? " on" : "") + '" type="button" data-flt="quick" data-v="' + c[0] + '" aria-pressed="' + c[2] + '">' + (c[2] ? ICON_CHECK : "") + esc(c[1]) + "</button>";
+      }).join("") + "</div>" +
+      accordion("tipo", "Tipo de suplemento", fl.tipos, "Todo el stock",
+        checkRow("tipo", "", "Todo el stock", count("tipo", function () { return true; }), !fl.tipos.length) +
+        tipos.map(function (t) { return checkRow("tipo", t, t, count("tipo", function (p) { return tipoOf(p) === t; }), fl.tipos.indexOf(t) >= 0); }).join("")) +
+      accordion("marca", "Marca", fl.marcas, "Todas las marcas",
+        checkRow("marca", "", "Todas las marcas", count("marca", function () { return true; }), !fl.marcas.length) +
+        marcas.map(function (m) { return checkRow("marca", m, m, count("marca", function (p) { return marcaOf(p) === m; }), fl.marcas.indexOf(m) >= 0); }).join("")) +
+      accordion("precio", "Precio", fl.precios.map(function (k) { return PRICES.filter(function (x) { return x[0] === k; })[0][1]; }), "Cualquier precio",
+        checkRow("precio", "", "Cualquier precio", count("precio", function () { return true; }), !fl.precios.length) +
+        PRICES.map(function (x) { return checkRow("precio", x[0], x[1], count("precio", function (p) { return bandOf(p) === x[0]; }), fl.precios.indexOf(x[0]) >= 0); }).join("")) +
+      "";
+    body.innerHTML = html;
+    body.scrollTop = top;
+    document.querySelector("#fsheet .reset").hidden = !activeFilters();
+    $("fgo").textContent = "Ver resultados (" + filtered().length + ")";
+  }
+  function toggleIn(list, v) { var i = list.indexOf(v); if (i >= 0) list.splice(i, 1); else list.push(v); }
+  function onFilter(t, act) {
+    var v = t.getAttribute("data-v") || "";
+    if (act === "open") return openFilter();
+    if (act === "close") return closeFilter();
+    if (act === "reset") fl = { tipos: [], marcas: [], precios: [], avail: false, sort: "" };
+    if (act === "acc") acc[v] = !acc[v];
+    if (act === "quick") { if (v === "avail") fl.avail = !fl.avail; else fl.sort = fl.sort === v ? "" : v; }
+    if (act === "tipo") { if (!v) fl.tipos = []; else toggleIn(fl.tipos, v); }
+    if (act === "marca") { if (!v) fl.marcas = []; else toggleIn(fl.marcas, v); }
+    if (act === "precio") { if (!v) fl.precios = []; else toggleIn(fl.precios, v); }
+    renderFilter();
+  }
+
+  // ------------------------------------------------------------ ficha del producto
+  function openDetail(id) {
+    if (!byId[id]) return;
+    detailId = id;
+    $("detail").classList.add("on"); document.body.classList.add("lock"); $("detail").scrollTop = 0;
+    renderDetail();
+  }
+  function closeDetail() {
+    detailId = "";
+    $("detail").classList.remove("on");
+    if (!$("sheet").classList.contains("on")) document.body.classList.remove("lock");
+    else renderReview();
+  }
+  function renderDetail() {
+    var p = byId[detailId]; if (!p) return;
+    var n = cart[p.id] || 0, list = flavorList(p), fq = flavorQty[p.id] || {}, max = maxOf(p), off = tierBps() > 0, u = imgUrl(p), inStock = hasStock(p);
+    var meta = [p.servings ? p.servings + " servicios" : "", p.segment, p.category].filter(Boolean).join(" · ");
+    var html = '<div class="top"><button type="button" id="dback">‹ Volver</button><h2>' + esc(p.brand) + "</h2></div>" +
+      '<div class="big">' + (inStock ? '<span class="ribbon">Entrega Inmediata</span>' : "") + (u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener" aria-label="Abrir la foto completa"><img src="' + esc(u) + '" alt="' + esc(p.name) + '" data-brand="' + esc(p.brand || "Nova Supps") + '" onerror="this.outerHTML=window._svgFallback(this.dataset.brand)"></a>' : window._svgFallback(p.brand || "Nova Supps")) + "</div>" +
+      '<div class="card dt" style="margin-top:12px"><div class="brand">' + esc(p.brand) + "</div><h2>" + esc(p.name) + "</h2>" +
+      (meta ? '<div class="meta" style="white-space:normal">' + esc(meta) + "</div>" : "") +
+      '<div class="price" style="margin-top:10px"><b>' + money(yourPrice(p)) + "</b>" + (off ? "<s>" + money(p.price) + "</s>" : "") + "</div>" +
+      (off ? '<span class="badge">Nivel ' + esc(link().tier_name) + " · " + bpsLabel(tierBps()) + " aplicado</span>" : "") +
+      (limited() && p.avail != null ? '<div class="stock" style="margin-top:8px">' + (max > 0 ? "Disponibles: " + max : "Agotado") + "</div>" : "") +
+      (!inStock ? '<div class="stock" style="margin-top:8px">Sobre pedido</div>' : "") +
+      "</div>";
+    if (list.length > 1) {
+      html += '<div class="card"><p class="sec" style="margin-top:0">ELIGE SABORES</p>' + list.map(function (f, i) {
+        var q = fq[f] || 0;
+        return '<div class="flv"><span>' + esc(f) + '</span><div class="step"><button type="button" data-act="fminus" data-id="' + esc(p.id) + '" data-f="' + i + '" aria-label="Quitar ' + esc(f) + '">−</button>' +
+          '<input readonly value="' + q + '" aria-label="Piezas de ' + esc(f) + '"><button class="plus" type="button" data-act="fplus" data-id="' + esc(p.id) + '" data-f="' + i + '" aria-label="Agregar ' + esc(f) + '">+</button></div></div>';
+      }).join("") +
+        (moreFlavors(p) ? '<div class="note warn">Puede haber más sabores: escríbelo abajo.</div>' : "") +
+        '<label for="fnote">Otro sabor o comentario (opcional)</label><input class="field" id="fnote" data-act="flavor" data-id="' + esc(p.id) + '" maxlength="120" value="' + esc(flavors[p.id] || "") + '" placeholder="Ej. 1 de cookies">' +
+        (n > assigned(p.id) && assigned(p.id) > 0 ? '<div class="note ok">' + plural(n - assigned(p.id), "pieza", "piezas") + " sin sabor elegido (lo elegimos por ti).</div>" : "") +
+        "</div>";
+    } else {
+      html += '<div class="card">' + (list.length === 1 || p.flavors ? '<div class="row" style="padding-top:0"><span>Sabor</span><b>' + esc(list[0] || p.flavors) + "</b></div>" : "") +
+        (moreFlavors(p) ? '<label for="fnote">Sabor que prefieres (opcional)</label><input class="field" id="fnote" data-act="flavor" data-id="' + esc(p.id) + '" maxlength="120" value="' + esc(flavors[p.id] || "") + '">' : "") +
+        '<p class="sec" style="margin:12px 0 8px">CANTIDAD</p>' + (max > 0 || n ? '<div class="step"><button type="button" data-act="minus" data-id="' + esc(p.id) + '" aria-label="Quitar uno de ' + esc(p.name) + '">−</button>' +
+          '<input inputmode="numeric" data-act="qty" data-id="' + esc(p.id) + '" value="' + n + '" aria-label="Cantidad de ' + esc(p.name) + '"><button class="plus" type="button" data-act="plus" data-id="' + esc(p.id) + '" aria-label="Agregar uno de ' + esc(p.name) + '">+</button></div>' : '<button class="add" type="button" disabled>Agotado</button>') + "</div>";
+    }
+    html += '<button class="cta full" type="button" id="dok">' + (n ? "Listo · " + plural(n, "pieza", "piezas") + " · " + money(yourPrice(p) * n) : "Volver al catálogo") + "</button>";
+    $("detailin").innerHTML = html;
+    $("dback").onclick = closeDetail;
+    $("dok").onclick = closeDetail;
+  }
+
+  // ------------------------------------------------------------ revisar y mandar
+  function openSheet() { $("sheet").classList.add("on"); document.body.classList.add("lock"); $("sheet").scrollTop = 0; renderReview(); }
+  function closeSheet() { $("sheet").classList.remove("on"); document.body.classList.remove("lock"); renderGrid(); renderBar(); }
+  $("review").addEventListener("click", openSheet);
+  function deliveryText(t) { return (t && t.lines && t.lines.length && t.lines.every(function (x) { return hasStock(x.p); })) ? "Entrega inmediata (según localidad y paquetería)" : "Sobre pedido (sujeto a localidad y servicios de paquetería)"; } function renderReviewTotals() {
+    var t = totals(), q = t.q, c = data.catalog, el = $("totals");
+    if (!el) return;
+    var below = c.minOrder && q.subtotal < c.minOrder;
+    el.innerHTML =
+      '<div class="row"><span>Subtotal</span><b>' + money(q.subtotal) + "</b></div>" +
+      (q.tierDiscount ? '<div class="row off"><span>Nivel ' + esc(link().tier_name) + " (" + bpsLabel(q.tierBps) + ")</span><b>−" + money(q.tierDiscount) + "</b></div>" : "") +
+      (q.volumeDiscount ? '<div class="row off"><span>Volumen (' + bpsLabel(q.volumeBps) + ")</span><b>−" + money(q.volumeDiscount) + "</b></div>" : "") + (q.shippingText ? '<div class="row"><span>Envío</span><b>' + esc(q.shippingText) + "</b></div>" : "") +
+      '<div class="row"><span>Tiempo de entrega</span><b>' + esc(deliveryText(t)) + "</b></div>" + '<div class="row total"><span>Total estimado</span><b>' + money(q.total) + "</b></div>" +
+      (q.next ? '<div class="note ok">Agrega ' + money(q.next.missing) + " y obtén " + bpsLabel(q.next.bps) + " más por volumen.</div>" : "") +
+      (below ? '<div class="note bad">El pedido mínimo es de ' + money(c.minOrder) + " (subtotal).</div>" : "");
+    var btn = $("send");
+    if (btn) btn.disabled = sending || !t.pieces || !!below || !window._termsAccepted;
+    var info = $("sheetinfo");
+    if (info) info.textContent = plural(t.pieces, "pieza", "piezas") + " · " + plural(t.lines.length, "producto", "productos");
+  }
+  function renderReview() {
+    var t = totals(), l = link();
+    var html = '<div class="top"><button type="button" id="back">‹ Catálogo</button><h2>Tu pedido</h2></div>';
+    if (!t.pieces) {
+      html += '<div class="card"><div class="empty">Aún no eliges productos.</div><button class="ghost" type="button" id="back2">Ver catálogo</button></div>';
+      $("sheetin").innerHTML = html;
+      $("back").onclick = closeSheet; $("back2").onclick = closeSheet;
+      return;
+    }
+    html += '<div class="card"><p class="sec" style="margin-top:0" id="sheetinfo"></p>' + t.lines.map(function (x) {
+      var p = x.p;
+      return '<div class="line"><div class="ph open" data-act="open" data-id="' + esc(p.id) + '">' + photo(p) + '</div><div class="t open" data-act="open" data-id="' + esc(p.id) + '"><div>' + esc(p.name) + "</div><span>" + esc(p.brand) + " · " + money(yourPrice(p)) + " c/u" + (noteFor(p.id) ? " · " + esc(noteFor(p.id)) : manyFlavors(p) ? " · Elegir sabores" : "") + "</span></div>" +
+        '<div class="step"><button type="button" data-act="minus" data-id="' + esc(p.id) + '" aria-label="Quitar uno de ' + esc(p.name) + '">−</button><input inputmode="numeric" data-act="qty" data-id="' + esc(p.id) + '" value="' + x.qty + '" aria-label="Cantidad de ' + esc(p.name) + '"><button class="plus" type="button" data-act="plus" data-id="' + esc(p.id) + '" aria-label="Agregar uno de ' + esc(p.name) + '">+</button></div></div>';
+    }).join("") + '<div id="totals"></div></div>';
+    if (l.general) {
+      html += '<div class="card"><p class="sec" style="margin-top:0">TUS DATOS</p>' +
+        field("name", "Tu nombre *", "text", "name") + field("business", "Negocio o gimnasio", "text", "organization") +
+        field("phone", "WhatsApp (10 dígitos) *", "tel", "tel") + field("email", "Correo (opcional)", "email", "email") + "</div>";
+    }
+    // 2.15.4 · Dirección de entrega por partes y forma de pago (se guardan con el pedido en la app).
+    var req = l.general ? " *" : "";
+    html += '<div class="card"><p class="sec" style="margin-top:0">DIRECCIÓN DE ENTREGA</p>' +
+      (l.general ? "" : '<p class="hint">Si la dejas vacía, entregamos en la dirección que tenemos registrada.</p>') +
+      field("street", "Calle y número" + req, "text") + field("col", "Colonia" + req, "text") +
+      field("addr2", "Interior / referencias (opcional)", "text") +
+      '<div class="two"><div>' + field("city", "Ciudad" + req, "text") + "</div><div>" + field("cp", "C.P." + req, "text", "", "numeric", 10) + "</div></div>" +
+      '<label for="c-state">Estado' + req + '</label><select class="field" id="c-state" data-act="contact" data-k="state"><option value="">Elegir estado</option>' +
+      STATES.map(function (st) { return '<option' + (contact.state === st ? " selected" : "") + ">" + esc(st) + "</option>"; }).join("") + "</select></div>" +
+      '<div class="card"><p class="sec" style="margin-top:0">ZONA DE ENTREGA</p><select class="field" id="c-zone" data-act="zone"><option value="local"' + ((contact.zone || "local") === "local" ? " selected" : "") + '>Zona local (Plaza Santín, Sauces, Parque Industrial Toluca 2000, Foro Pegaso)</option><option value="paqueteria"' + (contact.zone === "paqueteria" ? " selected" : "") + '>Otra localidad / Envío por paquetería</option></select><p class="hint" id="zone-hint">' + ((contact.zone || "local") === "paqueteria" ? "$250 MXN ($0-$10,000) · Envío incluido desde $10,001 · Entrega directa en instalaciones para gimnasios cerca de $15,000+" : "Envío gratis en existencia desde $1,200 MXN · Por confirmar según localidad si es menor a $1,200 MXN (o entrega directa en instalaciones si eres gimnasio con pedido >= $15,000 MXN)") + '</p></div><div class="card"><p class="sec" style="margin-top:0">FORMA DE PAGO *</p>' + PAYS.map(function (o) {
+        return '<label class="pay' + (contact.pay === o[0] ? " on" : "") + '"><input type="radio" name="pay" data-act="pay" value="' + o[0] + '"' + (contact.pay === o[0] ? " checked" : "") + "><span>" + esc(o[1]) + "<small>" + esc(o[2]) + "</small></span></label>";
+      }).join("") + "</div>";
+    html += '<div class="card"><label for="notes" style="margin-top:0">Comentarios (opcional)</label><textarea class="field" id="notes" data-act="notes" maxlength="600" placeholder="Ej. entregar por la tarde, factura, etc.">' + esc(notes) + "</textarea></div>" +
+      '<div class="card"><p class="sec" style="margin-top:0">TÉRMINOS Y CONDICIONES (B2C)</p><ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--ink)"><li><b>Descuentos sobre subtotal y envío:</b> $5,000 a $10,000 (3 % de descuento, envío absorbido por el cliente según localidad); $10,001 a $15,000 (8.5 % de descuento con envío incluido); $15,001 a $50,000 (15 % de descuento con envío incluido).</li><li><b>Gimnasios (B2C):</b> Si eres gimnasio y tu pedido está cerca de los $15,000 MXN o más, el envío se realiza directamente en tus instalaciones.</li><li><b>Confirmación:</b> Los precios y existencias son preliminares y se confirman en la orden de compra vía WhatsApp (5613388882).</li><li><b>Entrega local B2C:</b> Cobertura en Plaza Santín, Sauces, Parque Industrial Toluca 2000 y Foro Pegaso (pedido mínimo $1,200 MXN). Horario de atención hasta las 18:00 h.</li><li><b>Pago y facturación:</b> Efectivo, transferencia, tarjeta en línea (Mercado Pago) o terminal al entregar, tras confirmar la orden; si se requiere factura fiscal, indicarlo en el campo Comentarios.</li></ul></div><label style="display:flex;align-items:center;gap:10px;margin:14px 0 12px;cursor:pointer;font-size:14px;font-weight:700;color:var(--ink)"><input type="checkbox" id="termsAccept" required style="width:18px;height:18px;accent-color:var(--ink);cursor:pointer;flex:0 0 auto"><span>Acepto Términos y Condiciones</span></label><div id="err"></div><button class="cta full" type="button" id="send">Enviar pedido</button>' +
+      '<p style="text-align:center;color:var(--muted);font-size:13px;margin-top:10px">Los precios se confirman en tu orden de compra.</p>';
+    $("sheetin").innerHTML = html;
+    $("back").onclick = closeSheet;
+    $("send").onclick = send;
+    // 2.15.4 · «Enviar pedido» se activa solo al aceptar los Términos y Condiciones.
+    if ($("termsAccept")) {
+      $("termsAccept").checked = !!window._termsAccepted;
+      $("send").disabled = !window._termsAccepted;
+      $("termsAccept").onchange = function () { window._termsAccepted = !!this.checked; renderReviewTotals(); if (window._termsAccepted && $("err")) $("err").innerHTML = ""; };
+    }
+    renderReviewTotals();
+  }
+  function field(k, label, type, auto, mode, max) {
+    return '<label for="c-' + k + '">' + label + '</label><input class="field" id="c-' + k + '" type="' + type + '" autocomplete="off"' + (mode ? ' inputmode="' + mode + '"' : "") + ' data-act="contact" data-k="' + k + '" maxlength="' + (max || 120) + '" value="' + esc(contact[k] || "") + '">';
+  }
+  var STATES = ["Aguascalientes", "Baja California", "Baja California Sur", "Campeche", "Chiapas", "Chihuahua", "Ciudad de México", "Coahuila", "Colima", "Durango", "Estado de México", "Guanajuato", "Guerrero", "Hidalgo", "Jalisco", "Michoacán", "Morelos", "Nayarit", "Nuevo León", "Oaxaca", "Puebla", "Querétaro", "Quintana Roo", "San Luis Potosí", "Sinaloa", "Sonora", "Tabasco", "Tamaulipas", "Tlaxcala", "Veracruz", "Yucatán", "Zacatecas"];
+  var PAYS = [
+    ["tarjeta_linea", "Tarjeta en línea (Mercado Pago)", "Al confirmar tu orden te mandamos la liga para pagar con tarjeta de crédito o débito."],
+    ["tarjeta_entrega", "Tarjeta al entregar", "Pagas con terminal al recibir tu pedido."],
+    ["transferencia", "Transferencia", "Te mandamos los datos al confirmar tu orden."],
+    ["efectivo", "Efectivo al entregar", "Pagas al recibir tu pedido."]
+  ];
+  var ADDR = ["street", "col", "addr2", "city", "cp", "state"];
+  /** Revisa la dirección: obligatoria con el enlace general; con el personal, completa si se llena. */
+  function addressError(general) {
+    var v = function (k) { return String(contact[k] || "").trim(); };
+    var any = ADDR.some(function (k) { return v(k); });
+    if (!general && !any) return "";
+    if (v("street").length < 3) return "Escribe la calle y el número de la entrega.";
+    if (v("col").length < 2) return "Escribe la colonia de la entrega.";
+    if (v("city").length < 2) return "Escribe la ciudad de la entrega.";
+    if (!/^\d{5}$/.test(v("cp"))) return "El código postal debe tener 5 dígitos.";
+    if (!v("state")) return "Elige el estado de la entrega.";
+    return "";
+  }
+  function pickPay(v) {
+    contact.pay = v;
+    Array.prototype.forEach.call(document.querySelectorAll(".pay"), function (el) { var i = el.querySelector("input"); el.classList.toggle("on", !!i && i.checked); });
+    var e = $("err"); if (e && /pagar/.test(e.textContent)) e.innerHTML = "";
+  }
+  function showErr(text) { var e = $("err"); if (e) e.innerHTML = '<div class="note bad" style="margin-bottom:10px">' + esc(text) + "</div>"; }
+  function send() { if (window._tokExpired) return showErr("Token expirado. Renuévalo para continuar.");
+    var t = totals(), l = link();
+    if (!t.pieces || sending) return; if (!$("termsAccept") || !$("termsAccept").checked) return showErr("Debes aceptar los Términos y Condiciones para confirmar el pedido.");
+    if (l.general) {
+      if (String(contact.name || "").trim().length < 2) return showErr("Escribe tu nombre.");
+      if (String(contact.phone || "").replace(/\D/g, "").length < 10) return showErr("Escribe tu WhatsApp a 10 dígitos.");
+    }
+    var addrErr = addressError(l.general);
+    if (addrErr) return showErr(addrErr);
+    if (!contact.pay) return showErr("Elige cómo vas a pagar.");
+    sending = true;
+    $("send").disabled = true; $("send").textContent = "Enviando…";
+    var remoteLines = t.lines.filter(function (x) { return x.p._remote; });
+    var extraLines = t.lines.filter(function (x) { return !x.p._remote; });
+    var items = remoteLines.map(function (x) { return { id: x.p.id, qty: x.qty, note: noteFor(x.p.id) }; });
+    if (!items.length && window._remoteFallbackId) {
+      items = [{ id: window._remoteFallbackId, qty: t.pieces, note: extraLines.map(function (x) { return x.qty + "x " + x.p.name; }).join(", ").slice(0, 120) }];
+    }
+    var extraNote = extraLines.length ? "B2C: " + extraLines.map(function (x) { return x.qty + "x " + x.p.name + " (" + x.p.brand + ")" + (noteFor(x.p.id) ? " [" + noteFor(x.p.id) + "]" : ""); }).join("; ") : "";
+    var pick = {}; ADDR.concat(["pay"]).forEach(function (k) { if (contact[k]) pick[k] = String(contact[k]).trim(); });
+    var payRow = PAYS.filter(function (o) { return o[0] === contact.pay; })[0];
+    var payLabel = (payRow ? payRow[1] : contact.pay) + " [pay:" + contact.pay + "]";
+    var dirTag = ADDR.some(function (k) { return String(contact[k] || "").trim(); })
+      ? "[dir:" + ["street", "col", "addr2", "city", "state", "cp"].map(function (k) { return String(contact[k] || "").replace(/[\]~|]/g, " ").trim(); }).join("~") + "]"
+      : "";
+    var totalBps = (t.q.tierBps || 0) + (t.q.volumeBps || 0); var discPct = totalBps ? (totalBps / 100) : 0; var discAmt = (t.q.tierDiscount || 0) + (t.q.volumeDiscount || 0); var zoneLbl = (contact.zone || "local") === "paqueteria" ? "Otra localidad / Envío por paquetería" : "Zona local (Plaza Santín, Sauces, Parque Industrial Toluca 2000, Foro Pegaso)";
+    var body = {
+      p_token: token,
+      p_items: items,
+      p_contact: l.general ? contact : pick,
+      p_notes: [notes, extraNote, "Forma de pago: " + payLabel, "Tiempo de entrega: " + deliveryText(t), paymentNote, "Zona de entrega: " + zoneLbl, "Subtotal: " + money(t.q.subtotal), "Descuento (" + discPct + "%): -" + money(discAmt), "Envío: " + t.q.shippingText, "Total final: " + money(t.q.total), dirTag].filter(Boolean).join(" | ")
+    };
+    var payOnline = contact.pay === "tarjeta_linea";
+    var done = function (r) {
+      sending = false;
+      if (!r || !r.ok) {
+        $("send").textContent = "Enviar pedido"; renderReviewTotals();
+        return showErr((r && r.message) || "No se pudo enviar. Revisa tu internet e inténtalo de nuevo.");
+      }
+      cart = {}; flavors = {}; flavorQty = {}; contact = {}; notes = ""; window._termsAccepted = false;
+      save();
+      renderDone(r, t, payOnline);
+    };
+    if (demo) return setTimeout(function () { done({ ok: true, code: "D3M0A1" }); }, 600);
+    rpc("b2b_request_send", body).then(done).catch(function () { done(null); });
+  }
+  function renderDone(r, t, payOnline) {
+    var wa = String(data.catalog.whatsapp || "").replace(/\D/g, "");
+    var waUrl = wa.length >= 10 ? "https://wa.me/" + (wa.length === 10 ? "52" + wa : wa) + "?text=" + encodeURIComponent("Hola, acabo de mandar mi pedido " + r.code + " (" + plural(t.pieces, "pieza", "piezas") + ").") : "";
+    $("sheetin").innerHTML =
+      '<div class="card done"><div class="ok">' + ICON_CHECK + "</div><h2>¡Pedido enviado!</h2>" +
+      "<p>" + plural(t.pieces, "pieza", "piezas") + " · total estimado " + money(t.q.total) + ".<br>Lo revisamos y te confirmamos tu orden de compra con su folio y el enlace para seguirla." +
+      (payOnline ? "<br>Ahí mismo vas a poder pagar con tarjeta (Mercado Pago)." : "") + "</p>" +
+      '<div class="code">' + esc(r.code) + '</div><p style="font-size:13px">Tu código de pedido</p></div>' +
+      (waUrl ? '<a class="cta full" href="' + esc(waUrl) + '" target="_blank" rel="noopener">Avisar por WhatsApp</a>' : "") +
+      '<button class="ghost" type="button" id="again">Hacer otro pedido</button>';
+    $("again").onclick = function () { $("sheetin").innerHTML = ""; closeSheet(); renderMain(); window.scrollTo(0, 0); };
+  }
+
+  // ------------------------------------------------------------ carga
+  function rpc(fn, body) {
+    return fetch(SUPABASE + "/rest/v1/rpc/" + fn, { method: "POST", headers: { apikey: KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); });
+  }
+  function message(title, text) { $("main").innerHTML = '<div class="card msg"><h2>' + esc(title) + "</h2><p>" + esc(text) + "</p></div>"; }
+  var B2C_CATALOG = [
+    { id: "NS-CAF-001", name: "Coffee Fit 60 servicios", brand: "Advance Labs Nutrition", category: "Café funcional", segment: "Café funcional", servings: "60", flavors: "Café", price: 66900, stock: 2, in_stock: true, photo: "catalogue/NS-CAF-001-0.jpg", rx: /coffee\s*fit/ },
+    { id: "NS-OME-001", name: "Omega 3 Salmon Oil 90 cápsulas", brand: "B Life", category: "Omega 3", segment: "Omega 3", servings: "90", flavors: "Sin Sabor", price: 27900, stock: 3, in_stock: true, photo: "catalogue/NS-OME-001-0.jpg", rx: /b\s*life.*(omega|salmon)|(omega|salmon).*b\s*life/ },
+    { id: "NS-AMI-001", name: "AMINOx 30 servicios", brand: "BSN", category: "Aminoácidos", segment: "Aminoácidos", servings: "30", flavors: "Watermelon", price: 46900, stock: 3, in_stock: true, photo: "catalogue/NS-AMI-001-0.jpg", rx: /aminox/ },
+    { id: "NS-BEB-001", name: "C4 Energy Zero Sugar 1 Lata", brand: "Cellucor", category: "Bebida energética", segment: "Bebida energética", servings: "1", flavors: "Diferentes Sabores", price: 5900, stock: 11, in_stock: true, photo: "catalogue/NS-BEB-001-0.jpg", rx: /c4\s*energy/ },
+    { id: "NS-CRE-001", name: "Creatine 300 g", brand: "Dragon Pharma", category: "Creatina", segment: "Creatina", servings: "60", flavors: "Sin Sabor", price: 41900, stock: 3, in_stock: true, photo: "catalogue/NS-CRE-001-0.jpg", rx: /dragon\s*pharma.*creatin.*300|creatin.*dragon\s*pharma.*300/ },
+    { id: "NS-CRE-002", name: "Creatine 1 kg", brand: "Dragon Pharma", category: "Creatina", segment: "Creatina", servings: "200", flavors: "Sin Sabor", price: 68900, stock: 1, in_stock: true, photo: "catalogue/NS-CRE-002-0.jpg", rx: /dragon\s*pharma.*creatin.*(1\s*kg|1000)|creatin.*dragon\s*pharma.*(1\s*kg|1000)/ },
+    { id: "NS-PRE-001", name: "Venom Inferno 30 Servicios", brand: "Dragon Pharma", category: "Preentreno", segment: "Preentreno", servings: "30", flavors: "Dragon Lychee", price: 49900, stock: 2, in_stock: true, photo: "catalogue/NS-PRE-001-0.jpg", rx: /venom\s*inferno/ },
+    { id: "NS-PRO-001", name: "ISO100 5 lb", brand: "Dymatize", category: "Proteína", segment: "Proteína aislada", servings: "71", flavors: "Gourmet Chocolate", price: 199900, stock: 1, in_stock: true, photo: "catalogue/NS-PRO-001-0.jpg", rx: /dymatize.*iso\s*100|iso\s*100.*dymatize/ },
+    { id: "NS-VIT-001", name: "D3 + K2 60 Servicios", brand: "Evogen", category: "Vitaminas", segment: "Vitaminas", servings: "60", flavors: "Sin Sabor", price: 36900, stock: 1, in_stock: true, photo: "catalogue/NS-VIT-001-0.jpg", rx: /evogen.*d3.*k2|d3.*k2.*evogen/ },
+    { id: "NS-SOP-001", name: "Testrol Gold 30 Servicios", brand: "GAT Sport", category: "Soporte hormonal", segment: "Soporte hormonal", servings: "30", flavors: "Sin Sabor", price: 37900, stock: 2, in_stock: true, photo: "catalogue/NS-SOP-001-0.jpg", rx: /testrol\s*gold/ },
+    { id: "NS-SOP-002", name: "Testrol 60 60 Servicios", brand: "GAT Sport", category: "Soporte hormonal", segment: "Soporte hormonal", servings: "60", flavors: "Sin Sabor", price: 34500, stock: 2, in_stock: true, photo: "catalogue/NS-SOP-002-0.jpg", rx: /testrol\s*(original|60)/ },
+    { id: "NS-OME-002", name: "Omega 3 60 Servicios", brand: "GAT Sport", category: "Omega 3", segment: "Omega 3", servings: "60", flavors: "Sin Sabor", price: 27900, stock: 3, in_stock: true, photo: "catalogue/NS-OME-002-0.jpg", rx: /gat.*omega\s*3|omega\s*3.*gat/ },
+    { id: "NS-CRE-003", name: "Creatine 1 kg", brand: "GAT Sport", category: "Creatina", segment: "Creatina", servings: "200", flavors: "Sin Sabor", price: 63900, stock: 1, in_stock: true, photo: "catalogue/NS-CRE-003-0.jpg", rx: /gat.*creatin.*(1\s*kg|1000)|creatin.*gat.*(1\s*kg|1000)/ },
+    { id: "NS-CRE-004", name: "Creatine 300 g", brand: "GAT Sport", category: "Creatina", segment: "Creatina", servings: "60", flavors: "Sin Sabor", price: 36900, stock: 4, in_stock: true, photo: "catalogue/NS-CRE-004-0.jpg", rx: /gat.*creatin.*300|creatin.*gat.*300/ },
+    { id: "NS-PRE-002", name: "Nitraflex 300 g", brand: "GAT Sport", category: "Preentreno", segment: "Preentreno", servings: "30", flavors: "Watermelon", price: 45900, stock: 2, in_stock: true, photo: "catalogue/NS-PRE-002-0.jpg", rx: /nitraflex/ },
+    { id: "NS-VIT-002", name: "Vitamin C + Glutathione", brand: "Ghost Life", category: "Vitaminas", segment: "Vitaminas", servings: "30", flavors: "Sin Sabor", price: 47900, stock: 4, in_stock: true, photo: "catalogue/NS-VIT-002-0.jpg", rx: /ghost.*(vitamin\s*c|glutathione)|(vitamin\s*c|glutathione).*ghost/ },
+    { id: "NS-VIT-003", name: "Vitamin D3", brand: "Hi-Tech", category: "Vitaminas", segment: "Vitaminas", servings: "100", flavors: "Sin Sabor", price: 28900, stock: 4, in_stock: true, photo: "catalogue/NS-VIT-003-0.jpg", rx: /hi[\s-]*tech.*vitamin\s*d3|vitamin\s*d3.*hi[\s-]*tech/ },
+    { id: "NS-PRE-003", name: "Psychotic Test", brand: "Insane Labz", category: "Preentreno", segment: "Preentreno", servings: "30", flavors: "Grape", price: 49900, stock: 3, in_stock: true, photo: "catalogue/NS-PRE-003-0.jpg", rx: /psychotic\s*test/ },
+    { id: "NS-AMI-002", name: "Demon BCAA", brand: "Insane Labz", category: "Aminoácidos", segment: "Aminoácidos", servings: "30", flavors: "Blue Raspberry", price: 43900, stock: 4, in_stock: true, photo: "catalogue/NS-AMI-002-0.jpg", rx: /demon\s*bcaa/ },
+    { id: "NS-PRE-004", name: "Psychotic 35 servicios", brand: "Insane Labz", category: "Preentreno", segment: "Preentreno", servings: "35", flavors: "Grape", price: 43900, stock: 3, in_stock: true, photo: "catalogue/NS-PRE-004-0.jpg", rx: /insane\s*labz.*psychotic(?!\s*(gold|test))|psychotic(?!\s*(gold|test)).*insane\s*labz/ },
+    { id: "NS-PRE-005", name: "Psychotic Gold", brand: "Insane Labz", category: "Preentreno", segment: "Preentreno", servings: "30", flavors: "Fruit Punch", price: 46900, stock: 2, in_stock: true, photo: "catalogue/NS-PRE-005-0.jpg", rx: /psychotic\s*gold(?!\s*muestra)/ },
+    { id: "NS-PRE-006", name: "Psychotic Gold muestra 1 Servicio", brand: "Insane Labz", category: "Preentreno", segment: "Preentreno", servings: "1", flavors: "Diferentes Sabores", price: 2900, stock: 27, in_stock: true, photo: "catalogue/NS-PRE-006-0.jpg", rx: /psychotic\s*gold\s*muestra/ },
+    { id: "NS-AMI-003", name: "Killer BCAA", brand: "Killer Labz", category: "Aminoácidos", segment: "Aminoácidos", servings: "30", flavors: "Furious Punch", price: 42900, stock: 5, in_stock: true, photo: "catalogue/NS-AMI-003-0.jpg", rx: /killer\s*bcaa/ },
+    { id: "NS-PRE-007", name: "NitroTest", brand: "MuscleMeds", category: "Preentreno", segment: "Preentreno", servings: "30", flavors: "Watermelon", price: 58900, stock: 2, in_stock: true, photo: "catalogue/NS-PRE-007-0.jpg", rx: /nitro\s*test/ },
+    { id: "NS-PRO-002", name: "Nitro-Tech Gold 5 lb", brand: "MuscleTech", category: "Proteína", segment: "Proteína de suero", servings: "69", flavors: "Vainilla Ice Cream", price: 139900, stock: 1, in_stock: true, photo: "catalogue/NS-PRO-002-0.jpg", rx: /nitro[\s-]*tech\s*(100%\s*whey\s*)?gold/ },
+    { id: "NS-PRO-003", name: "Nitro-Tech Ripped 4 lb", brand: "MuscleTech", category: "Proteína", segment: "Proteína de suero", servings: "42", flavors: "Chocolate Fugde Brownie", price: 124900, stock: 2, in_stock: true, photo: "catalogue/NS-PRO-003-0.jpg", rx: /nitro[\s-]*tech\s*ripped/ },
+    { id: "NS-AMI-004", name: "Hardcore BCAA 30 Servicios", brand: "Mutant", category: "Aminoácidos", segment: "Aminoácidos", servings: "30", flavors: "Watermelon", price: 31900, stock: 3, in_stock: true, photo: "catalogue/NS-AMI-004-0.jpg", rx: /hardcore\s*bcaa/ },
+    { id: "NS-PRO-004", name: "Whey 5 lb", brand: "Mutant", category: "Proteína", segment: "Proteína de suero", servings: "63", flavors: "Chocolate", price: 94900, stock: 1, in_stock: true, photo: "catalogue/NS-PRO-004-0.jpg", rx: /mutant\s*whey|whey.*mutant/ },
+    { id: "NS-GAN-001", name: "Mass 6 lb", brand: "Mutant", category: "Ganador de peso", segment: "Ganador de peso", servings: "10", flavors: "Cookies & Cream", price: 53900, stock: 2, in_stock: true, photo: "catalogue/NS-GAN-001-0.jpg", rx: /mutant\s*mass|mass\s*extreme|mass.*mutant/ },
+    { id: "NS-AMI-005", name: "Amino Energy", brand: "Optimum Nutrition", category: "Aminoácidos", segment: "Aminoácidos", servings: "30", flavors: "Tropical Sunrise", price: 45900, stock: 4, in_stock: true, photo: "catalogue/NS-AMI-005-0.jpg", rx: /amino\s*energy/ },
+    { id: "NS-PRE-008", name: "CBUM Essential", brand: "RAW Nutrition", category: "Preentreno", segment: "Preentreno", servings: "30", flavors: "Champion Mentality", price: 51900, stock: 2, in_stock: true, photo: "catalogue/NS-PRE-008-0.jpg", rx: /cbum\s*essential/ },
+    { id: "NS-PRE-009", name: "CBUM Charged", brand: "RAW Nutrition", category: "Preentreno", segment: "Preentreno", servings: "30", flavors: "Blue Rathberry", price: 56900, stock: 2, in_stock: true, photo: "catalogue/NS-PRE-009-0.jpg", rx: /cbum\s*charged/ },
+    { id: "NS-PRO-005", name: "Isolate", brand: "RAW Nutrition", category: "Proteína", segment: "Proteína aislada", servings: "30", flavors: "Nieve Napolitano", price: 113900, stock: 2, in_stock: true, photo: "catalogue/NS-PRO-005-0.jpg", rx: /raw.*(isolate|itholate)|(isolate|itholate).*raw/ },
+    { id: "NS-OME-003", name: "Omega 3", brand: "Ronnie Coleman Signature Series", category: "Omega 3", segment: "Omega 3", servings: "120", flavors: "Sin Sabor", price: 21900, stock: 2, in_stock: true, photo: "catalogue/NS-OME-003-0.jpg", rx: /ronnie\s*coleman.*omega|omega.*ronnie\s*coleman|omega[\s-]*3\s*xs/ },
+    { id: "NS-PRO-006", name: "Whey Isolate 1 kg", brand: "SD Nutrition", category: "Proteína", segment: "Proteína aislada", servings: "33", flavors: "Vainilla Ice Cream", price: 35900, stock: 1, in_stock: true, photo: "catalogue/NS-PRO-006-0.jpg", rx: /sd\s*nutrition.*whey|whey\s*protein\s*100%\s*isolate|whey\s*isolate.*sd\s*nutrition/ },
+    { id: "NS-PRE-010", name: "Joker 30 Servicios", brand: "Terror Labz", category: "Preentreno", segment: "Preentreno", servings: "30", flavors: "Blood Orange", price: 51900, stock: 2, in_stock: true, photo: "catalogue/NS-PRE-010-0.jpg", rx: /terror\s*labz.*joker|\bjoker\b.*terror/ },
+    { id: "NS-PRO-007", name: "Unique Whey 5 lb", brand: "Unique Nutrition", category: "Proteína", segment: "Proteína de suero", servings: "75", flavors: "Chocolate", price: 52900, stock: 3, in_stock: true, photo: "catalogue/NS-PRO-007-0.jpg", rx: /unique\s*whey|unique\s*nutrition.*whey/ },
+    { id: "NS-PRO-008", name: "Whey HD 4 lb", brand: "BPI Sports", category: "Proteína", segment: "Proteína de suero", servings: "50", flavors: "Chocolate", price: 154900, stock: 3, in_stock: true, photo: "catalogue/NS-PRO-008-0.jpg", rx: /whey\s*hd/ },
+    { id: "NS-BAR-001", name: "Muscle Sandwich 1 barra", brand: "Muscle Sandwich", category: "Barra proteica", segment: "Barra proteica", servings: "1", flavors: "Peanut Butter", price: 3900, stock: 23, in_stock: true, photo: "catalogue/NS-BAR-001-0.jpg", rx: /muscle\s*sandwich/ },
+    { id: "NS-CAR-001", name: "Carnigen 30 Servicios", brand: "Evogen Nutrition", category: "Carnitina", segment: "Carnitina", servings: "30", flavors: "Sin Sabor", price: 50900, stock: 1, in_stock: true, photo: "catalogue/NS-CAR-001-0.jpg", rx: /carnigen/ },
+    { id: "NS-GLU-001", name: "Glutamine 1 kg", brand: "Optimum Nutrition", category: "Glutamina", segment: "Glutamina", servings: "200", flavors: "Sin Sabor", price: 117500, stock: 0, in_stock: false, photo: "catalogue/NS-GLU-001-0.jpg", rx: /optimum\s*nutrition.*glutamin|glutamin.*optimum\s*nutrition|glutamine\s*on\b/ }
+  ];
+  function start(d) {
+    data = d;
+    products = ((d.catalog && d.catalog.products) || []).filter(function (p) { return p && p.id && Number(p.price) > 0; });
+    window._remoteFallbackId = products[0] ? products[0].id : "";
+     
+    var matchedB2C = {};
+    products.forEach(function (p) {
+      p._remote = true;
+      p.in_stock = false;
+      p.price = Number(p.price) || 0;
+       
+       
+      var hay = fold((p.brand || "") + " " + (p.name || ""));
+      if (/biotina\s*\+\s*colageno/.test(hay) && /catalogo\/blife-biotina/i.test(String(p.photo || ""))) p.photo = "";
+      for (var i = 0; i < B2C_CATALOG.length; i++) {
+        var b2c = B2C_CATALOG[i];
+        if (!matchedB2C[b2c.id] && (p.id === b2c.id || p.code === b2c.id || b2c.rx.test(hay))) {
+          matchedB2C[b2c.id] = true;
+          p.in_stock = b2c.in_stock;
+          p.photo = b2c.photo;
+          break;
+        }
+      }
+      p._tipo = classifyTipo(p);
+      p.tipo = p._tipo;
+    });
+    if (!demo) {
+      B2C_CATALOG.forEach(function (b2c) {
+        if (!matchedB2C[b2c.id]) {
+          var copy = {
+            id: b2c.id, code: b2c.id, name: b2c.name, brand: b2c.brand, marca: b2c.brand,
+            category: b2c.category, segment: b2c.segment, servings: b2c.servings, flavors: b2c.flavors,
+            price: b2c.price, stock: b2c.stock, in_stock: b2c.in_stock, photo: b2c.photo, _remote: false
+          };
+          copy._tipo = classifyTipo(copy);
+          copy.tipo = copy._tipo;
+          products.push(copy);
+        }
+      });
+    }
+    if (d.catalog) {
+      d.catalog.tipos = TIPO_ORDER.filter(function (t) { return products.some(function (p) { return tipoOf(p) === t; }); });
+    }
+    byId = {}; products.forEach(function (p) { byId[p.id] = p; });
+    load();
+    Object.keys(cart).forEach(function (id) { if (!byId[id]) delete cart[id]; else cart[id] = Math.min(cart[id], maxOf(byId[id])); }); var lk = link(); const ttlH = Number(lk.token_ttl_hours || 12); const expMs = lk.expires_at ? Date.parse(lk.expires_at) : ((Date.parse(lk.updated_at || lk.created_at || "") || Date.now()) + ttlH * 3600000); const remMs = expMs - Date.now(); if (remMs <= 0) { window._tokExpired = true; var waNum = String((d.catalog && d.catalog.whatsapp) || "").replace(/[^0-9]/g, ""); var waUrl = "https://wa.me/" + (waNum.length >= 10 ? (waNum.length === 10 ? "52" + waNum : waNum) : "") + "?text=" + encodeURIComponent("Hola, mi enlace de pedido expiró tras sus " + ttlH + " horas de vigencia. ¿Me lo pueden renovar desde la app?"); $("main").innerHTML = '<div class="card hero"><h1>Enlace expirado</h1><p>Este enlace ha expirado tras sus ' + ttlH + ' horas de vigencia.</p><a class="btn" href="' + waUrl + '" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:12px;padding:10px 16px;border-radius:10px;background:#25D366;color:#fff;font-weight:700;text-decoration:none">Contactar por WhatsApp para renovar</a></div>'; return; } window._tokExpired = false;
+    renderMain();
+  }
+  var DEMO = {
+    link: { name: "Suplementos del Norte", tier_name: "Plata", tier_bps: 1000, general: false },
+    catalog: {
+      store: "GGG · Nova Supps", whatsapp: "", minOrder: 0, stack: "acumular", allowBackorder: true,
+      volume: [{ min: 500000, bps: 300 }, { min: 1000100, bps: 850 }, { min: 1500100, bps: 1500 }],
+      tipos: ["Creatinas", "Proteínas", "PWO", "Vitaminas", "Aminoácidos", "Ganadores", "Quemadores de Grasa"],
+      products: [
+        { id: "d1", name: "Gold Standard 100% Whey 5 Lb", brand: "Optimum Nutrition", category: "Proteínas", segment: "Proteína de suero", tipo: "Proteínas", servings: "74", flavors: "Varios (4): Chocolate, Vainilla, Fresa, Cookies…", price: 145000 },
+        { id: "d2", name: "Creatine Monohydrate 300 Gr", brand: "GAT Sport", category: "Rendimiento", segment: "Creatina", tipo: "Creatinas", servings: "60", flavors: "Único", price: 38000 },
+        { id: "d3", name: "C4 Original 30 Servings", brand: "Cellucor", category: "Rendimiento", segment: "Pre-entrenamiento", tipo: "PWO", servings: "30", flavors: "Varios: Icy Blue Razz, Fruit Punch", price: 52000 },
+        { id: "d4", name: "ISO 100 5 Lb", brand: "Dymatize", category: "Proteínas", segment: "Proteína aislada", tipo: "Proteínas", servings: "71", flavors: "Varios: Chocolate, Cookies", price: 168000 },
+        { id: "d5", name: "Lipo 6 Black 120 Caps", brand: "Nutrex", category: "Pérdida de peso", segment: "Quemador", tipo: "Quemadores de Grasa", servings: "60", flavors: "Único", price: 41000 },
+        { id: "d6", name: "Mass Tech Extreme 6 Lb", brand: "MuscleTech", category: "Proteínas", segment: "Ganador de peso", tipo: "Ganadores", servings: "8", flavors: "Varios: Chocolate, Vainilla", price: 98000 },
+        { id: "d7", name: "BCAA 2:1:1 30 Servings", brand: "Insane Labz", category: "Rendimiento", segment: "Aminoácidos", tipo: "Aminoácidos", servings: "30", flavors: "Varios: Mango, Uva", price: 29000 },
+        { id: "d8", name: "Multivitamínico 90 Tabs", brand: "Animal", category: "Vitaminas y Salud", segment: "Vitaminas", tipo: "Vitaminas", servings: "30", flavors: "Único", price: 33000 }
+      ]
+    },
+    updated_at: new Date().toISOString()
+  };
+  var qp = new URLSearchParams(location.search); var payId = qp.get("payment_id") || qp.get("collection_id"); var status = qp.get("status") || qp.get("collection_status"); var payType = qp.get("payment_type"); var extRef = qp.get("external_reference"); var paymentNote = ""; if (payId) { paymentNote = "Pago MP #" + payId + (status ? " (" + status + ")" : "") + (payType ? " [" + payType + "]" : "") + (extRef ? " ref:" + extRef : ""); rpc("b2b_payment_register", { p_token: token, p_payment_id: String(payId), p_status: String(status || ""), p_payment_type: String(payType || ""), p_external_reference: String(extRef || "") }).catch(() => {}); var showPayBanner = function () { var b = document.createElement("div"); b.style.cssText = "background:var(--greenSoft);color:var(--green);padding:10px 14px;text-align:center;font-size:13px;font-weight:600;border-bottom:1px solid var(--green)"; b.textContent = "Recibimos tu referencia de pago (" + payId + "). La confirmamos en unos minutos y te avisamos por WhatsApp."; if (document.body) document.body.insertBefore(b, document.body.firstChild); }; if (document.body) showPayBanner(); else document.addEventListener("DOMContentLoaded", showPayBanner); } if (demo) return start(DEMO);
+  if (!/^[a-z0-9]{16,64}$/.test(token)) return message("Enlace incompleto", "Abre el enlace completo que te mandamos por WhatsApp.");
+  rpc("b2b_order_page_get", { p_token: token })
+    .then(function (d) {
+      if (!d || !d.catalog) return message("Este enlace ya no está activo", "Pídenos tu enlace actualizado por WhatsApp.");
+      start(d);
+    })
+    .catch(function () { message("No se pudo cargar el catálogo", "Revisa tu internet y vuelve a abrir el enlace."); });
+})();
+</script>
+</body>
+</html>
