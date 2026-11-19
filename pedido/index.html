@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://yqosgsrqffiyrwpgqxag.supabase.co; connect-src https://yqosgsrqffiyrwpgqxag.supabase.co; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#F2F2F7">
 <title>Arma tu pedido · GGG Nova Supps</title>
 <style>
@@ -740,6 +742,8 @@
         $("send").textContent = "Enviar pedido"; renderReviewTotals();
         return showErr((r && r.message) || "No se pudo enviar. Revisa tu internet e inténtalo de nuevo.");
       }
+      // 2.15.7 · Código del pedido para ligar el pago con tarjeta si el cliente vuelve de Mercado Pago a esta página.
+      try { sessionStorage.setItem("nova-pedido-code-" + token, String(r.code || "")); } catch (e) {}
       cart = {}; flavors = {}; flavorQty = {}; contact = {}; notes = ""; window._termsAccepted = false;
       save();
       renderDone(r, t, payOnline);
@@ -876,7 +880,10 @@
     },
     updated_at: new Date().toISOString()
   };
-  var qp = new URLSearchParams(location.search); var payId = qp.get("payment_id") || qp.get("collection_id"); var status = qp.get("status") || qp.get("collection_status"); var payType = qp.get("payment_type"); var extRef = qp.get("external_reference"); var paymentNote = ""; if (payId) { paymentNote = "Pago MP #" + payId + (status ? " (" + status + ")" : "") + (payType ? " [" + payType + "]" : "") + (extRef ? " ref:" + extRef : ""); rpc("b2b_payment_register", { p_token: token, p_payment_id: String(payId), p_status: String(status || ""), p_payment_type: String(payType || ""), p_external_reference: String(extRef || "") }).catch(() => {}); var showPayBanner = function () { var b = document.createElement("div"); b.style.cssText = "background:var(--greenSoft);color:var(--green);padding:10px 14px;text-align:center;font-size:13px;font-weight:600;border-bottom:1px solid var(--green)"; b.textContent = "Recibimos tu referencia de pago (" + payId + "). La confirmamos en unos minutos y te avisamos por WhatsApp."; if (document.body) document.body.insertBefore(b, document.body.firstChild); }; if (document.body) showPayBanner(); else document.addEventListener("DOMContentLoaded", showPayBanner); } if (demo) return start(DEMO);
+  var qp = new URLSearchParams(location.search); var payId = qp.get("payment_id") || qp.get("collection_id"); var status = qp.get("status") || qp.get("collection_status"); var payType = qp.get("payment_type"); var extRef = qp.get("external_reference"); var paymentNote = ""; if (payId) { paymentNote = "Pago MP #" + payId + (status ? " (" + status + ")" : "") + (payType ? " [" + payType + "]" : "") + (extRef ? " ref:" + extRef : ""); var payCode = String(qp.get("code") || "").trim(); if (!payCode) { try { payCode = sessionStorage.getItem("nova-pedido-code-" + token) || ""; } catch (e) {} }
+    var showPayBanner = function (ok) { var b = document.createElement("div"); b.setAttribute("role", "status"); b.style.cssText = ok ? "background:var(--greenSoft);color:var(--green);padding:10px 14px;text-align:center;font-size:13px;font-weight:600;border-bottom:1px solid var(--green)" : "background:var(--amberSoft,#FFF4E0);color:var(--amber,#9A5B00);padding:10px 14px;text-align:center;font-size:13px;font-weight:600;border-bottom:1px solid var(--amber,#9A5B00)"; b.textContent = ok ? "Recibimos tu referencia de pago (" + payId + "). La confirmamos en unos minutos y te avisamos por WhatsApp." : "Tu referencia de pago es " + payId + ". Mándanosla por WhatsApp junto con tu código de pedido para confirmarla."; var put = function () { document.body.insertBefore(b, document.body.firstChild); }; if (document.body) put(); else document.addEventListener("DOMContentLoaded", put); };
+    // 2.15.7 · Con el código el pago queda en el pedido correcto (el enlace general lo comparten varios clientes).
+    rpc("b2b_payment_register", { p_token: token, p_payment_id: String(payId), p_status: String(status || ""), p_payment_type: String(payType || ""), p_external_reference: String(extRef || ""), p_code: payCode || null }).then(function (r) { showPayBanner(!!(r && r.ok)); }).catch(function () { showPayBanner(false); }); } if (demo) return start(DEMO);
   if (!/^[a-z0-9]{16,64}$/.test(token)) return message("Enlace incompleto", "Abre el enlace completo que te mandamos por WhatsApp.");
   rpc("b2b_order_page_get", { p_token: token })
     .then(function (d) {
