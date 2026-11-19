@@ -112,6 +112,10 @@
   .step button.plus { background: var(--green); color: #fff; }
   .step input { flex: 1; min-width: 0; height: 40px; border: 0; border-radius: 12px; background: #F2F2F7; text-align: center; font-size: 16px; font-weight: 700; outline: 0; }
   .flav { width: 100%; border: 0; border-radius: 10px; background: #F2F2F7; padding: 8px 10px; font-size: 14px; outline: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { border: 1px solid var(--line); background: #F2F2F7; color: var(--ink); border-radius: 999px; padding: 3px 8px; font-size: 11px; font-weight: 600; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chip.on { background: var(--greenSoft); border-color: var(--green); color: var(--green); }
+  .chip.extra { color: var(--muted); flex: none; }
   .stock { font-size: 12px; font-weight: 600; color: var(--amber); }
   .empty { text-align: center; color: var(--muted); padding: 30px 10px; }
   .more { display: block; width: 100%; margin-top: 12px; border: 0; border-radius: 16px; background: var(--paper); padding: 14px; font-weight: 600; }
@@ -195,6 +199,7 @@
 <div class="sheet" id="sheet"><div class="wrap" id="sheetin"></div></div>
 <div class="sheet" id="detail" style="z-index:20"><div class="wrap" id="detailin"></div></div>
 <div class="fsheet" id="fsheet"></div>
+<div class="fsheet" id="confirm" style="z-index:40"></div>
 <script>
 (function () {
   // Base en línea de la tienda (la clave publicable es pública por diseño; las funciones solo
@@ -279,7 +284,17 @@
   // ------------------------------------------------------------ precios
   var link = function () { return (data && data.link) || {}; };
   var tierBps = function () { return Math.max(0, Number(link().tier_bps) || 0); };
-  var yourPrice = function (p) { return Math.round((Number(p.price) * (10000 - tierBps())) / 10000); };
+  /** 2.17 · Precio mínimo del producto (utilidad mínima): ningún descuento baja de aquí. */
+  var floorOf = function (p) { var f = Math.round(Number(p && p.floor) || 0); return f > 0 ? Math.min(f, Number(p.price) || 0) : 0; };
+  var yourPrice = function (p) { return Math.max(floorOf(p), Math.round((Number(p.price) * (10000 - tierBps())) / 10000)); };
+  /** 2.17 · Envío fuera de la zona local (pesos en el catálogo; $250 si no viene). */
+  var envioForaneo = function () { var v = Number(data && data.catalog && data.catalog.envio_foraneo); return v > 0 ? Math.round(v * 100) : 25000; };
+  var LOCAL_ZONES = "Plaza Santín, Sauces, Parque Industrial Toluca 2000 y Foro Pegaso";
+  function zoneHint(z) {
+    return z === "paqueteria"
+      ? money(envioForaneo()) + " MXN de envío en pedidos hasta $10,000 (se suma al total) · Envío incluido desde $10,001 · Entrega directa en instalaciones para gimnasios cerca de $15,000+"
+      : "Envío gratis en existencia desde $1,200 MXN · Por confirmar según localidad si es menor a $1,200 MXN (o entrega directa en instalaciones si eres gimnasio con pedido >= $15,000 MXN)";
+  }
   /** Mismo cálculo que la app (descuento por nivel y luego por volumen, o solo el mayor). */
   function quote(subtotal) {
     var c = data.catalog;
@@ -299,12 +314,30 @@
   function totals() {
     var ls = lines();
     var subtotal = ls.reduce(function (s, l) { return s + Number(l.p.price) * l.qty; }, 0);
-    var q = quote(subtotal); var z = (contact && contact.zone) || "local"; var allInStock = ls.length > 0 && ls.every(function (l) { return hasStock(l.p); }); var shipCost = 0, shipLabel = q.shippingText; if (subtotal > 0) { if (subtotal >= 1000100) { shipCost = 0; shipLabel = "Envío incluido"; } else if (z === "local" && subtotal >= 120000) { shipCost = 0; shipLabel = "Sin costo (cobertura local)"; } else { shipCost = 0; shipLabel = "Por confirmar según localidad (a cargo del cliente)"; } } q.shippingCost = shipCost; q.shippingText = shipLabel; q.zone = z; q.total = q.total + shipCost; return { lines: ls, pieces: ls.reduce(function (n, l) { return n + l.qty; }, 0), q: q };
+    var q = quote(subtotal);
+    // 2.17 · Piso de utilidad: los descuentos no bajan el total de la suma de precios mínimos.
+    // Cada renglón recibe el mismo % de descuento total, pero ninguno baja de su precio mínimo.
+    var factor = subtotal > 0 ? q.total / subtotal : 1;
+    var extra = ls.reduce(function (s, l) { var f = floorOf(l.p) * l.qty; return s + (f ? Math.max(0, f - Math.round(Number(l.p.price) * l.qty * factor)) : 0); }, 0);
+    if (extra > 0) {
+      var over = extra, cut = Math.min(over, q.volumeDiscount);
+      q.volumeDiscount -= cut; over -= cut; q.tierDiscount -= Math.min(over, q.tierDiscount);
+      q.total = Math.max(0, q.subtotal - q.tierDiscount - q.volumeDiscount); q.floorLimited = true;
+    }
+    var z = (contact && contact.zone) || "local"; var shipCost = 0, shipLabel = q.shippingText; if (subtotal > 0) { if (subtotal >= 1000100) { shipCost = 0; shipLabel = "Envío incluido"; } else if (z === "local" && subtotal >= 120000) { shipCost = 0; shipLabel = "Sin costo (cobertura local)"; } else if (z === "paqueteria") { shipCost = envioForaneo(); shipLabel = money(shipCost) + " (fuera de zona local)"; } else { shipCost = 0; shipLabel = "Por confirmar según localidad (a cargo del cliente)"; } } q.shippingCost = shipCost; q.shippingText = shipLabel; q.zone = z; q.total = q.total + shipCost; return { lines: ls, pieces: ls.reduce(function (n, l) { return n + l.qty; }, 0), q: q };
   }
   var limited = function () { return data && data.catalog.allowBackorder === false; };
   var maxOf = function (p) { return limited() && p.avail != null ? Math.max(0, Number(p.avail)) : 9999; };
   /** Sabores del producto («Varios (3): Chocolate, Vainilla, Fresa…» → 3 sabores; «…» = hay más). */
+  var NO_FLAVOR = /^\s*(n\/a|na|sin sabor|único|unico|-)?\s*(\(sin sabor\))?\s*$/i;
   function flavorList(p) {
+    // 2.17 · Catálogo nuevo: la lista de sabores disponibles viene aparte (b2b_cat_sabores).
+    if (p && Array.isArray(p.sabores)) {
+      var s1 = {};
+      return p.sabores.map(function (f) { return String(f || "").trim(); }).filter(function (f) {
+        var k = fold(f); if (!f || NO_FLAVOR.test(f) || s1[k]) return false; s1[k] = 1; return true;
+      }).slice(0, 40);
+    }
     var raw = String(p.flavors || "");
     var t = raw.replace(/^\s*varios\s*(\(\d+\))?\s*:?\s*/i, "");
     if (/^\s*(único|unico|n\/a|-)?\s*$/i.test(t)) return [];
@@ -314,6 +347,7 @@
     }).slice(0, 30);
   }
   function moreFlavors(p) {
+    if (p && Array.isArray(p.sabores)) return false;
     var raw = String(p.flavors || ""), m = /\((\d+)\)/.exec(raw);
     return /…|\.\.\./.test(raw) || (m && Number(m[1]) > flavorList(p).length);
   }
@@ -357,15 +391,32 @@
     if (limited() && p.avail != null) return Number(p.avail) > 0;
     return !!p.in_stock;
   }
+  /** «25» → «25 servicios»; el catálogo nuevo ya lo trae escrito («25 servicios», «90 cápsulas»). */
+  function servingsText(p) {
+    var s = String((p && p.servings) || "").trim();
+    return !s ? "" : /^\d+([.,]\d+)?$/.test(s) ? s + " servicios" : s;
+  }
+  /** 2.17 · Sabores como botones en la tarjeta: tocar uno abre la ficha para elegir cantidades. */
+  function flavorChips(p, list) {
+    var fq = flavorQty[p.id] || {}, max = 3;
+    return '<div class="chips" aria-label="' + esc(plural(list.length, "sabor", "sabores")) + '">' +
+      list.slice(0, max).map(function (f) {
+        return '<button type="button" class="chip' + (fq[f] ? " on" : "") + '" data-act="open" data-id="' + esc(p.id) + '">' + esc(f) + (fq[f] ? " ×" + fq[f] : "") + "</button>";
+      }).join("") +
+      (list.length > max ? '<button type="button" class="chip extra" data-act="open" data-id="' + esc(p.id) + '">+' + (list.length - max) + "</button>" : "") +
+      "</div>";
+  }
   function card(p) {
     var off = tierBps() > 0, inStock = hasStock(p);
-    var meta = [p.servings ? p.servings + " servicios" : "", p.flavors && !/^(único|unico)$/i.test(p.flavors) ? p.flavors : ""].filter(Boolean).join(" · ");
+    var fls = flavorList(p), chips = Array.isArray(p.sabores) && fls.length > 1;
+    var meta = [servingsText(p), chips || !Array.isArray(p.sabores) ? "" : fls[0] || "", !Array.isArray(p.sabores) && p.flavors && !/^(único|unico)$/i.test(p.flavors) ? p.flavors : ""].filter(Boolean).join(" · ");
     return '<div class="p' + (cart[p.id] ? " sel" : "") + '" id="p-' + esc(p.id) + '">' +
       '<div class="open" data-act="open" data-id="' + esc(p.id) + '" role="button" aria-label="Ver ' + esc(p.name) + '">' +
       '<div class="ph">' + (inStock ? '<span class="ribbon">Entrega Inmediata</span>' : "") + photo(p) + (imgUrl(p) ? '<span class="zoom">' + ICON_ZOOM + "</span>" : "") + "</div>" +
       '<div class="brand" style="margin-top:6px">' + esc(p.brand) + "</div>" +
       '<div class="name">' + esc(p.name) + "</div></div>" +
       (meta ? '<div class="meta">' + esc(meta) + "</div>" : "") +
+      (chips ? flavorChips(p, fls) : "") +
       '<div class="price"><b>' + money(yourPrice(p)) + "</b>" + (off ? "<s>" + money(p.price) + "</s>" : "") + "</div>" +
       (limited() && p.avail != null && p.avail > 0 && p.avail < 10 ? '<div class="stock">Quedan ' + p.avail + "</div>" : "") +
       (!inStock ? '<div class="stock">Sobre pedido</div>' : "") +
@@ -473,6 +524,8 @@
     if (detailId === id && from !== "qty") renderDetail();
     var el = $("p-" + id);
     if (el && from !== "qty") { el.querySelector(".ctl").innerHTML = controls(p); }
+    var ch = el && el.querySelector(".chips");
+    if (ch) ch.outerHTML = flavorChips(p, flavorList(p));
     if (el) el.classList.toggle("sel", n > 0);
     renderBar();
     if ($("sheet").classList.contains("on") && from !== "qty") renderReview();
@@ -515,7 +568,7 @@
         contact[k] = val; save();
       }
       if (act === "pay") pickPay(t.value);
-    } else if (e.type === "change" && act === "zone") { contact.zone = t.value; save(); renderReviewTotals(); var zh = $("zone-hint"); if (zh) zh.textContent = t.value === "paqueteria" ? "$250 MXN ($0-$10,000) · Envío incluido desde $10,001 · Entrega directa en instalaciones para gimnasios cerca de $15,000+" : "Envío gratis en existencia desde $1,200 MXN · $80 MXN si es menor a $1,200 MXN"; } else if (e.type === "change" && act === "pay") {
+    } else if (e.type === "change" && act === "zone") { contact.zone = t.value; save(); renderReviewTotals(); var zh = $("zone-hint"); if (zh) zh.textContent = zoneHint(t.value); } else if (e.type === "change" && act === "pay") {
       pickPay(t.value);
     } else if (e.type === "change" && act === "qty") {
       // Al salir del campo, la tarjeta muestra la cantidad que quedó (o «Agregar» si fue 0).
@@ -610,7 +663,7 @@
   function renderDetail() {
     var p = byId[detailId]; if (!p) return;
     var n = cart[p.id] || 0, list = flavorList(p), fq = flavorQty[p.id] || {}, max = maxOf(p), off = tierBps() > 0, u = imgUrl(p), inStock = hasStock(p);
-    var meta = [p.servings ? p.servings + " servicios" : "", p.segment, p.category].filter(Boolean).join(" · ");
+    var meta = [servingsText(p), p.presentation && p.presentation !== p.servings ? p.presentation : "", p.segment, p.category].filter(Boolean).join(" · ");
     var html = '<div class="top"><button type="button" id="dback">‹ Volver</button><h2>' + esc(p.brand) + "</h2></div>" +
       '<div class="big">' + (inStock ? '<span class="ribbon">Entrega Inmediata</span>' : "") + (u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener" aria-label="Abrir la foto completa"><img src="' + esc(u) + '" alt="' + esc(p.name) + '" data-brand="' + esc(p.brand || "Nova Supps") + '" onerror="this.outerHTML=window._svgFallback(this.dataset.brand)"></a>' : window._svgFallback(p.brand || "Nova Supps")) + "</div>" +
       '<div class="card dt" style="margin-top:12px"><div class="brand">' + esc(p.brand) + "</div><h2>" + esc(p.name) + "</h2>" +
@@ -631,7 +684,7 @@
         (n > assigned(p.id) && assigned(p.id) > 0 ? '<div class="note ok">' + plural(n - assigned(p.id), "pieza", "piezas") + " sin sabor elegido (lo elegimos por ti).</div>" : "") +
         "</div>";
     } else {
-      html += '<div class="card">' + (list.length === 1 || p.flavors ? '<div class="row" style="padding-top:0"><span>Sabor</span><b>' + esc(list[0] || p.flavors) + "</b></div>" : "") +
+      html += '<div class="card">' + (list.length === 1 || (p.flavors && !Array.isArray(p.sabores)) ? '<div class="row" style="padding-top:0"><span>Sabor</span><b>' + esc(list[0] || p.flavors) + "</b></div>" : "") +
         (moreFlavors(p) ? '<label for="fnote">Sabor que prefieres (opcional)</label><input class="field" id="fnote" data-act="flavor" data-id="' + esc(p.id) + '" maxlength="120" value="' + esc(flavors[p.id] || "") + '">' : "") +
         '<p class="sec" style="margin:12px 0 8px">CANTIDAD</p>' + (max > 0 || n ? '<div class="step"><button type="button" data-act="minus" data-id="' + esc(p.id) + '" aria-label="Quitar uno de ' + esc(p.name) + '">−</button>' +
           '<input inputmode="numeric" data-act="qty" data-id="' + esc(p.id) + '" value="' + n + '" aria-label="Cantidad de ' + esc(p.name) + '"><button class="plus" type="button" data-act="plus" data-id="' + esc(p.id) + '" aria-label="Agregar uno de ' + esc(p.name) + '">+</button></div>' : '<button class="add" type="button" disabled>Agotado</button>') + "</div>";
@@ -654,6 +707,7 @@
       '<div class="row"><span>Subtotal</span><b>' + money(q.subtotal) + "</b></div>" +
       (q.tierDiscount ? '<div class="row off"><span>Nivel ' + esc(link().tier_name) + " (" + bpsLabel(q.tierBps) + ")</span><b>−" + money(q.tierDiscount) + "</b></div>" : "") +
       (q.volumeDiscount ? '<div class="row off"><span>Volumen (' + bpsLabel(q.volumeBps) + ")</span><b>−" + money(q.volumeDiscount) + "</b></div>" : "") + (q.shippingText ? '<div class="row"><span>Envío</span><b>' + esc(q.shippingText) + "</b></div>" : "") +
+      (q.floorLimited ? '<div class="note warn">Algunos productos ya están en su precio mínimo: el descuento se ajustó.</div>' : "") +
       '<div class="row"><span>Tiempo de entrega</span><b>' + esc(deliveryText(t)) + "</b></div>" + '<div class="row total"><span>Total estimado</span><b>' + money(q.total) + "</b></div>" +
       (q.next ? '<div class="note ok">Agrega ' + money(q.next.missing) + " y obtén " + bpsLabel(q.next.bps) + " más por volumen.</div>" : "") +
       (below ? '<div class="note bad">El pedido mínimo es de ' + money(c.minOrder) + " (subtotal).</div>" : "");
@@ -690,11 +744,11 @@
       '<div class="two"><div>' + field("city", "Ciudad" + req, "text") + "</div><div>" + field("cp", "C.P." + req, "text", "", "numeric", 10) + "</div></div>" +
       '<label for="c-state">Estado' + req + '</label><select class="field" id="c-state" data-act="contact" data-k="state"><option value="">Elegir estado</option>' +
       STATES.map(function (st) { return '<option' + (contact.state === st ? " selected" : "") + ">" + esc(st) + "</option>"; }).join("") + "</select></div>" +
-      '<div class="card"><p class="sec" style="margin-top:0">ZONA DE ENTREGA</p><select class="field" id="c-zone" data-act="zone"><option value="local"' + ((contact.zone || "local") === "local" ? " selected" : "") + '>Zona local (Plaza Santín, Sauces, Parque Industrial Toluca 2000, Foro Pegaso)</option><option value="paqueteria"' + (contact.zone === "paqueteria" ? " selected" : "") + '>Otra localidad / Envío por paquetería</option></select><p class="hint" id="zone-hint">' + ((contact.zone || "local") === "paqueteria" ? "$250 MXN ($0-$10,000) · Envío incluido desde $10,001 · Entrega directa en instalaciones para gimnasios cerca de $15,000+" : "Envío gratis en existencia desde $1,200 MXN · Por confirmar según localidad si es menor a $1,200 MXN (o entrega directa en instalaciones si eres gimnasio con pedido >= $15,000 MXN)") + '</p></div><div class="card"><p class="sec" style="margin-top:0">FORMA DE PAGO *</p>' + PAYS.map(function (o) {
+      '<div class="card"><p class="sec" style="margin-top:0">ZONA DE ENTREGA</p><select class="field" id="c-zone" data-act="zone"><option value="local"' + ((contact.zone || "local") === "local" ? " selected" : "") + '>Zona local (Plaza Santín, Sauces, Parque Industrial Toluca 2000, Foro Pegaso)</option><option value="paqueteria"' + (contact.zone === "paqueteria" ? " selected" : "") + '>Otra localidad / Envío por paquetería</option></select><p class="hint" id="zone-hint">' + esc(zoneHint(contact.zone || "local")) + '</p></div><div class="card"><p class="sec" style="margin-top:0">FORMA DE PAGO *</p>' + PAYS.map(function (o) {
         return '<label class="pay' + (contact.pay === o[0] ? " on" : "") + '"><input type="radio" name="pay" data-act="pay" value="' + o[0] + '"' + (contact.pay === o[0] ? " checked" : "") + "><span>" + esc(o[1]) + "<small>" + esc(o[2]) + "</small></span></label>";
       }).join("") + "</div>";
     html += '<div class="card"><label for="notes" style="margin-top:0">Comentarios (opcional)</label><textarea class="field" id="notes" data-act="notes" maxlength="600" placeholder="Ej. entregar por la tarde, factura, etc.">' + esc(notes) + "</textarea></div>" +
-      '<div class="card"><p class="sec" style="margin-top:0">TÉRMINOS Y CONDICIONES (B2C)</p><ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--ink)"><li><b>Descuentos sobre subtotal y envío:</b> $5,000 a $10,000 (3 % de descuento, envío absorbido por el cliente según localidad); $10,001 a $15,000 (8.5 % de descuento con envío incluido); $15,001 a $50,000 (15 % de descuento con envío incluido).</li><li><b>Gimnasios (B2C):</b> Si eres gimnasio y tu pedido está cerca de los $15,000 MXN o más, el envío se realiza directamente en tus instalaciones.</li><li><b>Confirmación:</b> Los precios y existencias son preliminares y se confirman en la orden de compra vía WhatsApp (5613388882).</li><li><b>Entrega local B2C:</b> Cobertura en Plaza Santín, Sauces, Parque Industrial Toluca 2000 y Foro Pegaso (pedido mínimo $1,200 MXN). Horario de atención hasta las 18:00 h.</li><li><b>Pago y facturación:</b> Efectivo, transferencia, tarjeta en línea (Mercado Pago) o terminal al entregar, tras confirmar la orden; si se requiere factura fiscal, indicarlo en el campo Comentarios.</li></ul></div><label style="display:flex;align-items:center;gap:10px;margin:14px 0 12px;cursor:pointer;font-size:14px;font-weight:700;color:var(--ink)"><input type="checkbox" id="termsAccept" required style="width:18px;height:18px;accent-color:var(--ink);cursor:pointer;flex:0 0 auto"><span>Acepto Términos y Condiciones</span></label><div id="err"></div><button class="cta full" type="button" id="send">Enviar pedido</button>' +
+      '<div class="card"><p class="sec" style="margin-top:0">TÉRMINOS Y CONDICIONES (B2C)</p><ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--ink)"><li><b>Descuentos sobre subtotal y envío:</b> $5,000 a $10,000 (3 % de descuento, envío absorbido por el cliente según localidad); $10,001 a $15,000 (8.5 % de descuento con envío incluido); $15,001 a $50,000 (15 % de descuento con envío incluido).</li><li><b>Gimnasios (B2C):</b> Si eres gimnasio y tu pedido está cerca de los $15,000 MXN o más, el envío se realiza directamente en tus instalaciones.</li><li><b>Envío fuera de zona local:</b> Si tu pedido es fuera de las zonas de cobertura local (' + LOCAL_ZONES + '), se cobrarán ' + money(envioForaneo()) + ' MXN de envío. Este monto se suma al confirmar tu orden y se agrega al total del pago (envío incluido desde $10,001).</li><li><b>Confirmación:</b> Los precios y existencias son preliminares y se confirman en la orden de compra vía WhatsApp (5613388882).</li><li><b>Entrega local B2C:</b> Cobertura en Plaza Santín, Sauces, Parque Industrial Toluca 2000 y Foro Pegaso (pedido mínimo $1,200 MXN). Horario de atención hasta las 18:00 h.</li><li><b>Pago y facturación:</b> Efectivo, transferencia, tarjeta en línea (Mercado Pago) o terminal al entregar, tras confirmar la orden; si se requiere factura fiscal, indicarlo en el campo Comentarios.</li></ul></div><label style="display:flex;align-items:center;gap:10px;margin:14px 0 12px;cursor:pointer;font-size:14px;font-weight:700;color:var(--ink)"><input type="checkbox" id="termsAccept" required style="width:18px;height:18px;accent-color:var(--ink);cursor:pointer;flex:0 0 auto"><span>Acepto Términos y Condiciones</span></label><div id="err"></div><button class="cta full" type="button" id="send">Enviar pedido</button>' +
       '<p style="text-align:center;color:var(--muted);font-size:13px;margin-top:10px">Los precios se confirman en tu orden de compra.</p>';
     $("sheetin").innerHTML = html;
     $("back").onclick = closeSheet;
@@ -752,6 +806,9 @@
       try { tsAnswer = window.turnstile && tsWidget !== null ? window.turnstile.getResponse(tsWidget) || "" : ""; } catch (e) {}
       if (!tsAnswer) return showErr("Confirma que no eres un robot (la casilla de verificación) y vuelve a enviar.");
     }
+    // 2.17 · Resumen y aviso del envío foráneo antes de mandar el pedido.
+    if (!window._shipConfirmed) return openConfirm(t);
+    window._shipConfirmed = false;
     sending = true;
     $("send").disabled = true; $("send").textContent = "Enviando…";
     var remoteLines = t.lines.filter(function (x) { return x.p._remote; });
@@ -792,6 +849,34 @@
     if (demo) return setTimeout(function () { done({ ok: true, code: "D3M0A1" }); }, 600);
     sendOrder(body).then(done).catch(function () { done(null); });
   }
+  function openConfirm(t) {
+    var q = t.q, out = (contact.zone || "local") === "paqueteria", box = $("confirm");
+    var row = function (a, b, cls) { return '<div class="row' + (cls ? " " + cls : "") + '"><span>' + a + "</span><b>" + b + "</b></div>"; };
+    box.innerHTML = '<div class="dim" data-cf="no"></div><div class="panel" role="dialog" aria-modal="true" aria-labelledby="cf-t"><div class="handle"></div>' +
+      '<div class="head"><b id="cf-t">Confirma tu pedido</b><button class="xbtn" type="button" data-cf="no" aria-label="Cerrar">' + ICON_X + "</button></div>" +
+      '<div class="fbody">' +
+      row("Productos", esc(plural(t.pieces, "pieza", "piezas"))) +
+      row("Subtotal", money(q.subtotal)) +
+      (q.tierDiscount + q.volumeDiscount ? row("Descuentos", "−" + money(q.tierDiscount + q.volumeDiscount), "off") : "") +
+      row("Envío", esc(q.shippingCost ? money(q.shippingCost) : q.shippingText || "Por confirmar")) +
+      row("Total a pagar", money(q.total), "total") +
+      '<div class="note ' + (out ? "warn" : "ok") + '" id="cf-ship"><b>Envío fuera de zona local.</b> Si tu pedido es fuera de las zonas de cobertura local (' + esc(LOCAL_ZONES) + "), se cobrarán <b>" + money(envioForaneo()) + " MXN de envío</b>. Este monto se suma al confirmar tu orden y se agrega al total del pago" +
+      (out ? (q.shippingCost ? " (ya está incluido en el total de arriba)." : ". Tu pedido ya tiene envío incluido.") : ". Si tu dirección resulta fuera de la zona local, te lo indicamos en tu orden de compra.") + "</div>" +
+      '<label class="pay on" style="margin-top:12px"><input type="checkbox" id="cf-ok"><span>Entiendo y acepto el costo de envío según los Términos y Condiciones</span></label>' +
+      "</div>" +
+      '<button class="fgo" type="button" id="cf-go" data-cf="yes" disabled>Confirmar y enviar</button>' +
+      '<button class="ghost" type="button" data-cf="no">Revisar mi pedido</button></div>';
+    box.classList.add("on");
+    $("cf-ok").onchange = function () { $("cf-go").disabled = !this.checked; };
+    $("cf-go").focus && setTimeout(function () { try { $("cf-ok").focus(); } catch (e) {} }, 50);
+  }
+  $("confirm").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-cf]"); if (!b) return;
+    var yes = b.getAttribute("data-cf") === "yes";
+    if (yes && !($("cf-ok") && $("cf-ok").checked)) return;
+    $("confirm").classList.remove("on"); $("confirm").innerHTML = "";
+    if (yes) { window._shipConfirmed = true; send(); }
+  });
   function renderDone(r, t, payOnline) {
     var wa = String(data.catalog.whatsapp || "").replace(/\D/g, "");
     var waUrl = wa.length >= 10 ? "https://wa.me/" + (wa.length === 10 ? "52" + wa : wa) + "?text=" + encodeURIComponent("Hola, acabo de mandar mi pedido " + r.code + " (" + plural(t.pieces, "pieza", "piezas") + ").") : "";
@@ -916,7 +1001,10 @@
         { id: "d5", name: "Lipo 6 Black 120 Caps", brand: "Nutrex", category: "Pérdida de peso", segment: "Quemador", tipo: "Quemadores de Grasa", servings: "60", flavors: "Único", price: 41000 },
         { id: "d6", name: "Mass Tech Extreme 6 Lb", brand: "MuscleTech", category: "Proteínas", segment: "Ganador de peso", tipo: "Ganadores", servings: "8", flavors: "Varios: Chocolate, Vainilla", price: 98000 },
         { id: "d7", name: "BCAA 2:1:1 30 Servings", brand: "Insane Labz", category: "Rendimiento", segment: "Aminoácidos", tipo: "Aminoácidos", servings: "30", flavors: "Varios: Mango, Uva", price: 29000 },
-        { id: "d8", name: "Multivitamínico 90 Tabs", brand: "Animal", category: "Vitaminas y Salud", segment: "Vitaminas", tipo: "Vitaminas", servings: "30", flavors: "Único", price: 33000 }
+        { id: "d8", name: "Multivitamínico 90 Tabs", brand: "Animal", category: "Vitaminas y Salud", segment: "Vitaminas", tipo: "Vitaminas", servings: "30", flavors: "Único", price: 33000 },
+        // 2.17 · Formato del catálogo nuevo: sabores en lista y precio mínimo (floor).
+        { id: "musclefit-100-whey-protein-5-lb", name: "100% Whey Protein", brand: "MuscleFit", category: "Proteínas", segment: "Proteínas Suero de Leche Concentrado", servings: "", presentation: "5 Lb", sabores: ["Chocolate", "Chocolate Dubai", "Strawberry", "Vanilla"], flavors: "Chocolate, Chocolate Dubai, Strawberry, Vanilla", price: 110000, floor: 101000 },
+        { id: "musclefit-tst-120-caps", name: "TST", brand: "MuscleFit", category: "Rendimiento", segment: "Precursores de Testosterona", servings: "120 cápsulas", presentation: "120 Caps", sabores: ["N/A (sin sabor)"], flavors: "N/A (sin sabor)", price: 26300, floor: 20300 }
       ]
     },
     updated_at: new Date().toISOString()
