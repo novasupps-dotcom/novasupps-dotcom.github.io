@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://yqosgsrqffiyrwpgqxag.supabase.co; connect-src https://yqosgsrqffiyrwpgqxag.supabase.co; font-src 'self' data:; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#F2F2F7">
 <title>Arma tu pedido · GGG Nova Supps</title>
 <style>
@@ -200,6 +202,39 @@
   // supabase/migrations/2.15.0_b2b_pedidos.sql).
   var SUPABASE = "https://yqosgsrqffiyrwpgqxag.supabase.co";
   var KEY = "sb_publishable_ZjMxBiCaO2YYrZxEX3xrdA_0zhjqJsl";
+  // 2.15.9 · Verificación anti-robots (Cloudflare Turnstile). Vacía = sin verificación.
+  var TURNSTILE_SITE_KEY = "0x4AAAAAAGIBEug6Us2C5eN_";
+  var tsWidget = null;
+  function mountTurnstile() {
+    if (!TURNSTILE_SITE_KEY || demo || !$("termsAccept")) return;
+    var anchor = $("termsAccept").closest("label") || $("termsAccept");
+    if ($("ts")) return;
+    var box = document.createElement("div");
+    box.id = "ts"; box.style.cssText = "display:flex;justify-content:center;margin:12px 0";
+    anchor.parentNode.insertBefore(box, anchor.nextSibling);
+    var render = function () {
+      if (!$("ts")) return;
+      try { if (tsWidget !== null) window.turnstile.remove(tsWidget); } catch (e) {}
+      tsWidget = window.turnstile.render("#ts", { sitekey: TURNSTILE_SITE_KEY, language: "es", theme: "light" });
+    };
+    if (window.turnstile) return render();
+    window._tsReady = render;
+    if (!document.getElementById("ts-js")) {
+      var s = document.createElement("script");
+      s.id = "ts-js"; s.async = true; s.defer = true;
+      s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=_tsReady";
+      document.head.appendChild(s);
+    }
+  }
+  /** 2.15.9 · El pedido pasa por la función b2b-pedido (Turnstile y límite por conexión). */
+  function sendOrder(body) {
+    return fetch(SUPABASE + "/functions/v1/b2b-pedido", { method: "POST", headers: { apikey: KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(function (r) {
+        // Si la función aún no está publicada, se usa la ruta anterior.
+        if (r.status === 404) { var b = {}; Object.keys(body).forEach(function (k) { if (k !== "turnstile") b[k] = body[k]; }); return rpc("b2b_request_send", b); }
+        return r.json();
+      });
+  }
   var PAGE = 60;
   var params = new URLSearchParams(location.search);
   var token = (params.get("l") || "").trim();
@@ -671,6 +706,7 @@
       $("termsAccept").onchange = function () { window._termsAccepted = !!this.checked; renderReviewTotals(); if (window._termsAccepted && $("err")) $("err").innerHTML = ""; };
     }
     renderReviewTotals();
+    mountTurnstile();
   }
   function field(k, label, type, auto, mode, max) {
     return '<label for="c-' + k + '">' + label + '</label><input class="field" id="c-' + k + '" type="' + type + '" autocomplete="off"' + (mode ? ' inputmode="' + mode + '"' : "") + ' data-act="contact" data-k="' + k + '" maxlength="' + (max || 120) + '" value="' + esc(contact[k] || "") + '">';
@@ -711,6 +747,11 @@
     var addrErr = addressError(l.general);
     if (addrErr) return showErr(addrErr);
     if (!contact.pay) return showErr("Elige cómo vas a pagar.");
+    var tsAnswer = "";
+    if (TURNSTILE_SITE_KEY && !demo) {
+      try { tsAnswer = window.turnstile && tsWidget !== null ? window.turnstile.getResponse(tsWidget) || "" : ""; } catch (e) {}
+      if (!tsAnswer) return showErr("Confirma que no eres un robot (la casilla de verificación) y vuelve a enviar.");
+    }
     sending = true;
     $("send").disabled = true; $("send").textContent = "Enviando…";
     var remoteLines = t.lines.filter(function (x) { return x.p._remote; });
@@ -733,19 +774,23 @@
       p_contact: l.general ? contact : pick,
       p_notes: [notes, extraNote, "Forma de pago: " + payLabel, "Tiempo de entrega: " + deliveryText(t), paymentNote, "Zona de entrega: " + zoneLbl, "Subtotal: " + money(t.q.subtotal), "Descuento (" + discPct + "%): -" + money(discAmt), "Envío: " + t.q.shippingText, "Total final: " + money(t.q.total), dirTag].filter(Boolean).join(" | ")
     };
+    if (tsAnswer) body.turnstile = tsAnswer;
     var payOnline = contact.pay === "tarjeta_linea";
     var done = function (r) {
       sending = false;
       if (!r || !r.ok) {
+        try { if (window.turnstile && tsWidget !== null) window.turnstile.reset(tsWidget); } catch (e) {}
         $("send").textContent = "Enviar pedido"; renderReviewTotals();
         return showErr((r && r.message) || "No se pudo enviar. Revisa tu internet e inténtalo de nuevo.");
       }
+      // 2.15.7 · Código del pedido para ligar el pago con tarjeta si el cliente vuelve de Mercado Pago a esta página.
+      try { sessionStorage.setItem("nova-pedido-code-" + token, String(r.code || "")); } catch (e) {}
       cart = {}; flavors = {}; flavorQty = {}; contact = {}; notes = ""; window._termsAccepted = false;
       save();
       renderDone(r, t, payOnline);
     };
     if (demo) return setTimeout(function () { done({ ok: true, code: "D3M0A1" }); }, 600);
-    rpc("b2b_request_send", body).then(done).catch(function () { done(null); });
+    sendOrder(body).then(done).catch(function () { done(null); });
   }
   function renderDone(r, t, payOnline) {
     var wa = String(data.catalog.whatsapp || "").replace(/\D/g, "");
@@ -876,10 +921,21 @@
     },
     updated_at: new Date().toISOString()
   };
-  var qp = new URLSearchParams(location.search); var payId = qp.get("payment_id") || qp.get("collection_id"); var status = qp.get("status") || qp.get("collection_status"); var payType = qp.get("payment_type"); var extRef = qp.get("external_reference"); var paymentNote = ""; if (payId) { paymentNote = "Pago MP #" + payId + (status ? " (" + status + ")" : "") + (payType ? " [" + payType + "]" : "") + (extRef ? " ref:" + extRef : ""); rpc("b2b_payment_register", { p_token: token, p_payment_id: String(payId), p_status: String(status || ""), p_payment_type: String(payType || ""), p_external_reference: String(extRef || "") }).catch(() => {}); var showPayBanner = function () { var b = document.createElement("div"); b.style.cssText = "background:var(--greenSoft);color:var(--green);padding:10px 14px;text-align:center;font-size:13px;font-weight:600;border-bottom:1px solid var(--green)"; b.textContent = "Recibimos tu referencia de pago (" + payId + "). La confirmamos en unos minutos y te avisamos por WhatsApp."; if (document.body) document.body.insertBefore(b, document.body.firstChild); }; if (document.body) showPayBanner(); else document.addEventListener("DOMContentLoaded", showPayBanner); } if (demo) return start(DEMO);
+  var qp = new URLSearchParams(location.search); var payId = qp.get("payment_id") || qp.get("collection_id"); var status = qp.get("status") || qp.get("collection_status"); var payType = qp.get("payment_type"); var extRef = qp.get("external_reference"); var paymentNote = ""; if (payId) { paymentNote = "Pago MP #" + payId + (status ? " (" + status + ")" : "") + (payType ? " [" + payType + "]" : "") + (extRef ? " ref:" + extRef : ""); var payCode = String(qp.get("code") || "").trim(); if (!payCode) { try { payCode = sessionStorage.getItem("nova-pedido-code-" + token) || ""; } catch (e) {} }
+    var showPayBanner = function (ok) { var b = document.createElement("div"); b.setAttribute("role", "status"); b.style.cssText = ok ? "background:var(--greenSoft);color:var(--green);padding:10px 14px;text-align:center;font-size:13px;font-weight:600;border-bottom:1px solid var(--green)" : "background:var(--amberSoft,#FFF4E0);color:var(--amber,#9A5B00);padding:10px 14px;text-align:center;font-size:13px;font-weight:600;border-bottom:1px solid var(--amber,#9A5B00)"; b.textContent = ok ? "Recibimos tu referencia de pago (" + payId + "). La confirmamos en unos minutos y te avisamos por WhatsApp." : "Tu referencia de pago es " + payId + ". Mándanosla por WhatsApp junto con tu código de pedido para confirmarla."; var put = function () { document.body.insertBefore(b, document.body.firstChild); }; if (document.body) put(); else document.addEventListener("DOMContentLoaded", put); };
+    // 2.15.7 · Con el código el pago queda en el pedido correcto (el enlace general lo comparten varios clientes).
+    rpc("b2b_payment_register", { p_token: token, p_payment_id: String(payId), p_status: String(status || ""), p_payment_type: String(payType || ""), p_external_reference: String(extRef || ""), p_code: payCode || null }).then(function (r) { showPayBanner(!!(r && r.ok)); }).catch(function () { showPayBanner(false); }); } if (demo) return start(DEMO);
   if (!/^[a-z0-9]{16,64}$/.test(token)) return message("Enlace incompleto", "Abre el enlace completo que te mandamos por WhatsApp.");
   rpc("b2b_order_page_get", { p_token: token })
     .then(function (d) {
+      // 2.15.8 · Enlace en pausa: sin catálogo, con botón de WhatsApp.
+      if (d && d.paused) {
+        var pw = String(d.whatsapp || "").replace(/\D/g, "");
+        var pUrl = pw.length >= 10 ? "https://wa.me/" + (pw.length === 10 ? "52" + pw : pw) + "?text=" + encodeURIComponent("Hola, quiero hacer un pedido.") : "";
+        $("main").innerHTML = '<div class="card msg"><h2>Pedidos en línea en pausa</h2><p>Por ahora no estamos recibiendo pedidos en línea' + (d.store ? " en " + esc(d.store) : "") + ". Escríbenos por WhatsApp y con gusto te atendemos.</p>" +
+          (pUrl ? '<a class="cta full" style="display:block;margin-top:18px;text-decoration:none" href="' + esc(pUrl) + '" target="_blank" rel="noopener noreferrer">Escribir por WhatsApp</a>' : "") + "</div>";
+        return;
+      }
       if (!d || !d.catalog) return message("Este enlace ya no está activo", "Pídenos tu enlace actualizado por WhatsApp.");
       start(d);
     })
