@@ -1203,11 +1203,13 @@
       ? "[dir:" + ["street", "col", "addr2", "city", "state", "cp"].map(function (k) { return String(contact[k] || "").replace(/[\]~|]/g, " ").trim(); }).join("~") + "]"
       : "";
     var totalBps = (t.q.tierBps || 0) + (t.q.volumeBps || 0); var discPct = totalBps ? (totalBps / 100) : 0; var discAmt = (t.q.tierDiscount || 0) + (t.q.volumeDiscount || 0); var dm = deliveryMode(t.q); var zoneLbl = (t.q.freeShipping ? "Envío gratis " + (dm === "local" ? "local" : "por paquetería") + " (pedido desde " + money(envioGratis()) + ")" : ZONES[dm] ? ZONES[dm].title + " (" + ZONES[dm].sub.split(" · ")[0] + ")" : "") + (dm === "local" && contact.lugar ? " · Lugar de entrega: " + contact.lugar : "");
+    var envTag = "[envio:" + (dm === "local" || dm === "paqueteria" ? dm : "") + "~" + (dm === "local" ? String(contact.lugar || "").replace(/[\]~|\[]/g, " ").trim() : "") + "~" + (t.q.freeShipping ? 0 : Math.round(t.q.shippingCost || 0)) + "~" + (t.q.freeShipping ? 1 : 0) + "]";
     var body = {
       p_token: token,
       p_items: items,
       p_contact: l.general ? contact : pick,
-      p_notes: [notes, extraNote, "Forma de pago: " + payLabel, "Entrega estimada: " + deliveryEta(t.q), paymentNote, "Envío: " + zoneLbl + " " + (t.q.freeShipping ? "sin costo" : money(t.q.shippingCost)), "Subtotal: " + money(t.q.subtotal), "Descuento (" + discPct + "%): -" + money(discAmt), "Total de productos: " + money(t.q.productsTotal), "Total final: " + money(t.q.total), dirTag].filter(Boolean).join(" | ")
+      // 2.18.1 · Envío en una etiqueta que la app lee sin interpretar el texto: [envio:modo~lugar~centavos~gratis].
+      p_notes: [envTag, notes, extraNote, "Forma de pago: " + payLabel, "Entrega estimada: " + deliveryEta(t.q), paymentNote, "Envío: " + zoneLbl + " " + (t.q.freeShipping ? "sin costo" : money(t.q.shippingCost)), "Subtotal: " + money(t.q.subtotal), "Descuento (" + discPct + "%): -" + money(discAmt), "Total de productos: " + money(t.q.productsTotal), "Total final: " + money(t.q.total), dirTag].filter(Boolean).join(" | ")
     };
     if (tsAnswer) body.turnstile = tsAnswer;
     var payOnline = contact.pay === "tarjeta_linea";
@@ -1224,7 +1226,7 @@
       save();
       renderDone(r, t, payOnline);
     };
-    if (demo) return setTimeout(function () { done({ ok: true, code: "D3M0A1" }); }, 600);
+    if (demo) { window.__demoBody = body; return setTimeout(function () { done({ ok: true, code: "D3M0A1" }); }, 600); }
     sendOrder(body).then(done).catch(function () { done(null); });
   }
   function openConfirm(t) {
