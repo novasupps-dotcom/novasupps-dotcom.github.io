@@ -30,15 +30,23 @@
   .hero p { color: var(--muted); font-size: 15px; }
   .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; background: var(--greenSoft); color: var(--green); margin-top: 12px; }
   .sec { font-size: 12.5px; font-weight: 600; letter-spacing: .8px; color: var(--muted); margin: 18px 4px 10px; }
-  /* Buscador con «Filtrar» adentro (igual que Vender en la app). */
-  .search { display: flex; align-items: center; gap: 8px; background: #E9E9EE; border-radius: 999px; padding: 6px 6px 6px 16px; height: 54px; }
-  .search > svg { width: 20px; height: 20px; stroke: var(--muted); fill: none; stroke-width: 2; flex: none; }
-  .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 16.5px; height: 100%; }
+  /* 2.17.2 · Buscador (iOS / One UI): campo de 44 px con esquinas de píldora y, a un lado, el botón
+     de filtro circular de 44 px (área táctil mínima de Apple y Samsung) con el número de filtros. */
+  .searchrow { display: flex; align-items: center; gap: 10px; }
+  .search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 6px 0 14px; border-radius: 22px; background: rgba(118, 118, 128, .12); transition: box-shadow .15s; }
+  .search:focus-within { box-shadow: 0 0 0 2px rgba(217, 37, 47, .28); background: var(--paper); }
+  .search > svg { width: 18px; height: 18px; stroke: var(--muted); fill: none; stroke-width: 2.2; flex: none; }
+  .search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; font-size: 17px; letter-spacing: -.2px; }
+  .search input::placeholder { color: #8E8E93; }
   .search input::-webkit-search-cancel-button { display: none; }
-  .fbtn { flex: none; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 999px; background: var(--red); color: #fff; font-size: 15px; font-weight: 700; padding: 0 16px; height: 42px; }
-  .fbtn svg { width: 17px; height: 17px; stroke: #fff; fill: none; stroke-width: 2.2; }
-  .fbtn i { font-style: normal; min-width: 20px; height: 20px; border-radius: 10px; background: #fff; color: var(--red); font-size: 12px; display: grid; place-items: center; padding: 0 5px; }
-  .fsum2 { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 16px 4px 0; }
+  .qx { flex: none; width: 32px; height: 32px; border: 0; border-radius: 16px; background: transparent; display: grid; place-items: center; }
+  .qx svg { width: 15px; height: 15px; stroke: #8E8E93; fill: none; stroke-width: 2.6; }
+  .fbtn { flex: none; position: relative; width: 44px; height: 44px; border: 0; border-radius: 22px; background: rgba(118, 118, 128, .12); display: grid; place-items: center; transition: background .15s; }
+  .fbtn svg { width: 20px; height: 20px; stroke: var(--ink); fill: none; stroke-width: 2.1; stroke-linecap: round; }
+  .fbtn.on { background: var(--red); }
+  .fbtn.on svg { stroke: #fff; }
+  .fbtn i { position: absolute; top: -3px; right: -3px; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 10px; background: var(--ink); color: #fff; font-style: normal; font-size: 11.5px; font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--bg); }
+  .fsum2 { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 20px 4px 0; }
   .fsum2 b { font-size: 22px; letter-spacing: -.3px; }
   .fsum2 span { min-width: 30px; height: 26px; border-radius: 13px; background: #E9E9EE; color: var(--muted); font-size: 13px; font-weight: 700; display: grid; place-items: center; padding: 0 8px; }
   /* Hoja «Filtrar productos» */
@@ -166,6 +174,24 @@
   .pay small { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; font-weight: 400; }
   .pay.on { background: var(--paper); box-shadow: inset 0 0 0 2px var(--ink); }
   .hint { color: var(--muted); font-size: 13px; margin: 2px 2px 0; }
+  /* 2.17.2 · Dirección, colonias y envío */
+  .two2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+  .cpfield { font-size: 20px; font-weight: 700; letter-spacing: 3px; font-variant-numeric: tabular-nums; max-width: 180px; }
+  .opts { max-height: 264px; overflow-y: auto; -webkit-overflow-scrolling: touch; border-radius: 14px; background: #F2F2F7; }
+  .opt { display: flex; align-items: center; gap: 12px; min-height: 48px; margin: 0; padding: 10px 14px; border-top: 1px solid var(--line); color: var(--ink); font-size: 15.5px; font-weight: 500; cursor: pointer; }
+  .opt:first-child { border-top: 0; }
+  .opt input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--red); }
+  .opt span { flex: 1; min-width: 0; }
+  .opt small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 400; }
+  .opt.on { background: var(--redSoft); color: var(--red); font-weight: 700; }
+  .pay.ship { align-items: center; }
+  .pay.ship span { flex: 1; min-width: 0; }
+  .pay small.area { margin-top: 4px; font-size: 12.5px; }
+  .zp { flex: none; font-size: 15px; font-variant-numeric: tabular-nums; text-align: right; }
+  .zp s { display: block; color: var(--faint); font-size: 12px; font-weight: 500; }
+  .terms ol { margin: 0; padding-left: 20px; font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+  .terms li { margin-bottom: 8px; }
+  .terms li:last-child { margin-bottom: 0; }
   .done { text-align: center; padding: 26px 10px 10px; }
   .done .ok { width: 72px; height: 72px; border-radius: 50%; background: var(--greenSoft); display: grid; place-items: center; margin: 0 auto 14px; }
   .done .ok svg { width: 38px; height: 38px; stroke: var(--green); fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -261,7 +287,7 @@
   var ICON_JAR = '<svg viewBox="0 0 24 24"><path d="M8 3h8v3H8z"/><path d="M7 6h10a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/><path d="M9 11h6M9 15h6"/></svg>';
   var ICON_SEARCH = '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
   var ICON_CHECK = '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>';
-  var ICON_SLIDERS = '<svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>';
+  var ICON_SLIDERS = '<svg viewBox="0 0 24 24"><path d="M4 7h9M18 7h2M4 17h3M12 17h8"/><circle cx="15.5" cy="7" r="2.3"/><circle cx="9.5" cy="17" r="2.3"/></svg>';
   var ICON_X = '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>';
   var ICON_DOWN = '<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>';
   var ICON_ZOOM = '<svg viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
@@ -287,14 +313,17 @@
   /** 2.17 · Precio mínimo del producto (utilidad mínima): ningún descuento baja de aquí. */
   var floorOf = function (p) { var f = Math.round(Number(p && p.floor) || 0); return f > 0 ? Math.min(f, Number(p.price) || 0) : 0; };
   var yourPrice = function (p) { return Math.max(floorOf(p), Math.round((Number(p.price) * (10000 - tierBps())) / 10000)); };
-  /** 2.17 · Envío fuera de la zona local (pesos en el catálogo; $250 si no viene). */
-  var envioForaneo = function () { var v = Number(data && data.catalog && data.catalog.envio_foraneo); return v > 0 ? Math.round(v * 100) : 25000; };
+  /** 2.17.2 · Tarifas de envío (pesos en el catálogo de Supabase; si no vienen, las de los Términos). */
+  var cents = function (k, def) { var v = Number(data && data.catalog && data.catalog[k]); return v > 0 ? Math.round(v * 100) : def; };
+  var envioForaneo = function () { return cents("envio_foraneo", 25000); };
+  var envioLocal = function () { return cents("envio_local", 8000); };
+  var envioGratis = function () { return cents("envio_gratis_desde", 1000100); };
   var LOCAL_ZONES = "Plaza Santín, Sauces, Parque Industrial Toluca 2000 y Foro Pegaso";
-  function zoneHint(z) {
-    return z === "paqueteria"
-      ? money(envioForaneo()) + " MXN de envío en pedidos hasta $10,000 (se suma al total) · Envío incluido desde $10,001 · Entrega directa en instalaciones para gimnasios cerca de $15,000+"
-      : "Envío gratis en existencia desde $1,200 MXN · Por confirmar según localidad si es menor a $1,200 MXN (o entrega directa en instalaciones si eres gimnasio con pedido >= $15,000 MXN)";
-  }
+  var DELIVERY = "1 a 5 días hábiles, según disponibilidad";
+  var ZONES = {
+    paqueteria: { title: "Envío por paquetería", sub: "3 a 5 días hábiles · a todo México", cost: envioForaneo },
+    local: { title: "Envío local", sub: "Menos de 72 horas hábiles · según disponibilidad en almacén", area: "Solo en " + LOCAL_ZONES, cost: envioLocal }
+  };
   /** Mismo cálculo que la app (descuento por nivel y luego por volumen, o solo el mayor). */
   function quote(subtotal) {
     var c = data.catalog;
@@ -305,7 +334,7 @@
     var t = tierBps(), v = reached;
     if (c.stack === "mejor") { if (t >= v) v = 0; else t = 0; }
     var td = pct(subtotal, t), vd = pct(subtotal - td, v);
-    return { subtotal: subtotal, tierBps: t, tierDiscount: td, volumeBps: v, volumeDiscount: vd, shippingText: activeRule ? activeRule.shipping : "", total: Math.max(0, subtotal - td - vd), next: next ? { missing: next.min - subtotal, bps: next.bps } : null };
+    return { subtotal: subtotal, tierBps: t, tierDiscount: td, volumeBps: v, volumeDiscount: vd, total: Math.max(0, subtotal - td - vd), next: next ? { missing: next.min - subtotal, bps: next.bps } : null };
   }
   var bpsLabel = function (b) { return String(Math.round(b) / 100).replace(/\.0+$/, "") + " %"; };
   function lines() {
@@ -324,7 +353,14 @@
       q.volumeDiscount -= cut; over -= cut; q.tierDiscount -= Math.min(over, q.tierDiscount);
       q.total = Math.max(0, q.subtotal - q.tierDiscount - q.volumeDiscount); q.floorLimited = true;
     }
-    var z = (contact && contact.zone) || "local"; var shipCost = 0, shipLabel = q.shippingText; if (subtotal > 0) { if (subtotal >= 1000100) { shipCost = 0; shipLabel = "Envío incluido"; } else if (z === "local" && subtotal >= 120000) { shipCost = 0; shipLabel = "Sin costo (cobertura local)"; } else if (z === "paqueteria") { shipCost = envioForaneo(); shipLabel = money(shipCost) + " (fuera de zona local)"; } else { shipCost = 0; shipLabel = "Por confirmar según localidad (a cargo del cliente)"; } } q.shippingCost = shipCost; q.shippingText = shipLabel; q.zone = z; q.total = q.total + shipCost; return { lines: ls, pieces: ls.reduce(function (n, l) { return n + l.qty; }, 0), q: q };
+    q.productsTotal = q.total;
+    var z = ZONES[contact && contact.zone] ? contact.zone : "";
+    var free = subtotal > 0 && subtotal >= envioGratis();
+    var shipCost = z && !free ? ZONES[z].cost() : 0;
+    q.zone = z; q.freeShipping = free; q.shippingCost = shipCost;
+    q.shippingText = !z ? "" : ZONES[z].title + ": " + (free ? "sin costo" : money(shipCost));
+    q.total = q.productsTotal + shipCost;
+    return { lines: ls, pieces: ls.reduce(function (n, l) { return n + l.qty; }, 0), q: q };
   }
   var limited = function () { return data && data.catalog.allowBackorder === false; };
   var maxOf = function (p) { return limited() && p.avail != null ? Math.max(0, Number(p.avail)) : 9999; };
@@ -478,7 +514,9 @@
     var title = fl.tipos.length === 1 ? fl.tipos[0] : fl.marcas.length === 1 && !fl.tipos.length ? fl.marcas[0] : query.trim() ? "Resultados" : activeFilters() ? "Filtrados" : "Todos los productos";
     $("count").innerHTML = "<b>" + esc(title) + "</b><span>" + list.length + "</span>";
     var n = activeFilters();
-    $("fbtn").innerHTML = "▽ Filtrar" + (n ? "<i>" + n + "</i>" : "");
+    $("fbtn").innerHTML = ICON_SLIDERS + (n ? "<i>" + n + "</i>" : "");
+    $("fbtn").classList.toggle("on", n > 0);
+    $("fbtn").setAttribute("aria-label", n ? "Filtrar productos (" + n + " activos)" : "Filtrar productos");
   }
   function renderMain() {
     var l = link(), c = data.catalog;
@@ -492,12 +530,14 @@
       (tierBps() ? '<span class="badge">Nivel ' + esc(l.tier_name) + " · " + bpsLabel(tierBps()) + " de descuento ya aplicado</span>" : "") +
       (c.minOrder ? '<p style="margin-top:10px;font-size:14px">Pedido mínimo: <b>' + money(c.minOrder) + "</b></p>" : "") +
       "</div>" +
-      '<div class="search">' + ICON_SEARCH + '<input id="q" type="search" placeholder="Buscar producto, marca o sabor" aria-label="Buscar producto" value="' + esc(query) + '">' +
-      '<button class="fbtn" id="fbtn" type="button" data-flt="open" aria-label="Filtrar">' + "▽ Filtrar</button></div>" + '<div id="qchips" style="display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none">' + ["Todos","Entrega inmediata","Creatinas","Proteínas","PWO","Aminos","Salud","Snacks"].map(function(cat){var on=cat==="Todos"?(!fl.avail&&!fl.tipos.length):cat==="Entrega inmediata"?fl.avail:fl.tipos.indexOf(cat)>=0;return '<button type="button" data-chip="'+cat+'" style="white-space:nowrap;border:1px solid '+(on?"#111":"#d4d4d8")+';background:'+(on?"#111":"#fff")+';color:'+(on?"#fff":"#111")+';border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer">'+cat+'</button>';}).join("") + '</div>' +
+      '<div class="searchrow"><label class="search">' + ICON_SEARCH + '<input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Buscar producto o marca" aria-label="Buscar producto, marca o sabor" value="' + esc(query) + '">' +
+      '<button class="qx" id="qx" type="button" aria-label="Borrar búsqueda"' + (query ? "" : " hidden") + ">" + ICON_X + "</button></label>" +
+      '<button class="fbtn" id="fbtn" type="button" data-flt="open" aria-label="Filtrar productos">' + ICON_SLIDERS + "</button></div>" +
       '<div class="fsum2" id="count"></div>' +
       '<div class="grid" id="grid"></div><button class="more" id="more" type="button" hidden></button>';
-    $("q").addEventListener("input", function (e) { query = e.target.value; shown = PAGE; renderGrid(); });
-    $("more").addEventListener("click", function () { shown += PAGE; renderGrid(); }); function apply(){ shown=PAGE; renderGrid(); $("qchips").querySelectorAll("button").forEach(function(b){var c=b.getAttribute("data-chip"),on=c==="Todos"?(!fl.avail&&!fl.tipos.length):c==="Entrega inmediata"?fl.avail:fl.tipos.indexOf(c)>=0;b.style.borderColor=on?"#111":"#d4d4d8";b.style.background=on?"#111":"#fff";b.style.color=on?"#fff":"#111";}); } $("qchips").addEventListener("click", function(e){var b=e.target.closest("[data-chip]");if(!b)return;var c=b.getAttribute("data-chip");if(c==="Todos"){fl.avail=false;fl.tipos=[];}else if(c==="Entrega inmediata"){fl.avail=!fl.avail;}else{fl.tipos=fl.tipos.indexOf(c)>=0?[]:[c];}apply();});
+    $("q").addEventListener("input", function (e) { query = e.target.value; shown = PAGE; $("qx").hidden = !query; renderGrid(); });
+    $("qx").addEventListener("click", function () { query = ""; $("q").value = ""; $("qx").hidden = true; shown = PAGE; renderGrid(); $("q").focus(); });
+    $("more").addEventListener("click", function () { shown += PAGE; renderGrid(); });
     renderGrid();
     renderBar();
     var wa = String(c.whatsapp || "").replace(/\D/g, "");
@@ -566,9 +606,20 @@
         var k = t.getAttribute("data-k"), val = t.value.slice(0, 120);
         if (k === "cp") { val = val.replace(/\D/g, "").slice(0, 5); if (t.value !== val) t.value = val; }
         contact[k] = val; save();
+        if (k === "cp") lookupCP(val);
       }
       if (act === "pay") pickPay(t.value);
-    } else if (e.type === "change" && act === "zone") { contact.zone = t.value; save(); renderReviewTotals(); var zh = $("zone-hint"); if (zh) zh.textContent = zoneHint(t.value); } else if (e.type === "change" && act === "pay") {
+    } else if (e.type === "change" && act === "zone") {
+      contact.zone = t.value; save();
+      Array.prototype.forEach.call(document.querySelectorAll(".pay.ship"), function (el) { var i = el.querySelector("input"); el.classList.toggle("on", !!i && i.checked); });
+      renderReviewTotals();
+      var ez = $("err"); if (ez && /envío|paquetería/.test(ez.textContent)) ez.innerHTML = "";
+    } else if (e.type === "change" && act === "colpick") {
+      if (t.value === "otra") { contact.colOther = true; contact.col = ""; }
+      else { contact.colOther = false; contact.col = (cpData && cpData.colonias[Number(t.value)] || {}).n || ""; }
+      save(); renderColonias();
+      if (contact.colOther && $("c-col")) $("c-col").focus();
+    } else if (e.type === "change" && act === "pay") {
       pickPay(t.value);
     } else if (e.type === "change" && act === "qty") {
       // Al salir del campo, la tarjeta muestra la cantidad que quedó (o «Agregar» si fue 0).
@@ -699,18 +750,32 @@
   function openSheet() { $("sheet").classList.add("on"); document.body.classList.add("lock"); $("sheet").scrollTop = 0; renderReview(); }
   function closeSheet() { $("sheet").classList.remove("on"); document.body.classList.remove("lock"); renderGrid(); renderBar(); }
   $("review").addEventListener("click", openSheet);
-  function deliveryText(t) { return (t && t.lines && t.lines.length && t.lines.every(function (x) { return hasStock(x.p); })) ? "Entrega inmediata (según localidad y paquetería)" : "Sobre pedido (sujeto a localidad y servicios de paquetería)"; } function renderReviewTotals() {
+  /** 2.17.2 · Precio de cada opción de envío y total a pagar (con envío) en la tarjeta de envío. */
+  function renderShipping(t) {
+    var q = t.q;
+    Object.keys(ZONES).forEach(function (k) {
+      var el = $("zp-" + k); if (!el) return;
+      el.innerHTML = q.freeShipping ? '<s>+' + money(ZONES[k].cost()) + "</s>Gratis" : "+" + money(ZONES[k].cost());
+    });
+    var box = $("shiptotal"); if (!box) return;
+    box.innerHTML = !q.zone
+      ? '<p class="hint" style="margin-top:10px">' + (q.freeShipping ? "Tu pedido tiene envío sin costo." : "Envío sin costo en pedidos desde " + money(envioGratis()) + ".") + "</p>"
+      : '<div class="row" style="margin-top:6px"><span>Envío</span><b>' + (q.freeShipping ? "Sin costo" : money(q.shippingCost)) + '</b></div><div class="row total"><span>Total a pagar</span><b>' + money(q.total) + "</b></div>" +
+        (!q.freeShipping && q.subtotal < envioGratis() ? '<p class="hint">Agrega ' + money(envioGratis() - q.subtotal) + " y tu envío es sin costo.</p>" : "");
+  }
+  function renderReviewTotals() {
     var t = totals(), q = t.q, c = data.catalog, el = $("totals");
     if (!el) return;
     var below = c.minOrder && q.subtotal < c.minOrder;
     el.innerHTML =
       '<div class="row"><span>Subtotal</span><b>' + money(q.subtotal) + "</b></div>" +
       (q.tierDiscount ? '<div class="row off"><span>Nivel ' + esc(link().tier_name) + " (" + bpsLabel(q.tierBps) + ")</span><b>−" + money(q.tierDiscount) + "</b></div>" : "") +
-      (q.volumeDiscount ? '<div class="row off"><span>Volumen (' + bpsLabel(q.volumeBps) + ")</span><b>−" + money(q.volumeDiscount) + "</b></div>" : "") + (q.shippingText ? '<div class="row"><span>Envío</span><b>' + esc(q.shippingText) + "</b></div>" : "") +
+      (q.volumeDiscount ? '<div class="row off"><span>Volumen (' + bpsLabel(q.volumeBps) + ")</span><b>−" + money(q.volumeDiscount) + "</b></div>" : "") +
       (q.floorLimited ? '<div class="note warn">Algunos productos ya están en su precio mínimo: el descuento se ajustó.</div>' : "") +
-      '<div class="row"><span>Tiempo de entrega</span><b>' + esc(deliveryText(t)) + "</b></div>" + '<div class="row total"><span>Total estimado</span><b>' + money(q.total) + "</b></div>" +
+      '<div class="row"><span>Tiempo de entrega</span><b>' + DELIVERY + "</b></div>" + '<div class="row total"><span>Total de productos</span><b>' + money(q.productsTotal) + "</b></div>" +
       (q.next ? '<div class="note ok">Agrega ' + money(q.next.missing) + " y obtén " + bpsLabel(q.next.bps) + " más por volumen.</div>" : "") +
       (below ? '<div class="note bad">El pedido mínimo es de ' + money(c.minOrder) + " (subtotal).</div>" : "");
+    renderShipping(t);
     var btn = $("send");
     if (btn) btn.disabled = sending || !t.pieces || !!below || !window._termsAccepted;
     var info = $("sheetinfo");
@@ -737,18 +802,27 @@
     }
     // 2.15.4 · Dirección de entrega por partes y forma de pago (se guardan con el pedido en la app).
     var req = l.general ? " *" : "";
+    // 2.17.2 · Dirección: primero el C.P. (catálogo de SEPOMEX en Supabase): llena estado y ciudad y
+    // muestra sus colonias para elegir. Calle, número e interior se escriben.
     html += '<div class="card"><p class="sec" style="margin-top:0">DIRECCIÓN DE ENTREGA</p>' +
       (l.general ? "" : '<p class="hint">Si la dejas vacía, entregamos en la dirección que tenemos registrada.</p>') +
-      field("street", "Calle y número" + req, "text") + field("col", "Colonia" + req, "text") +
-      field("addr2", "Interior / referencias (opcional)", "text") +
-      '<div class="two"><div>' + field("city", "Ciudad" + req, "text") + "</div><div>" + field("cp", "C.P." + req, "text", "", "numeric", 10) + "</div></div>" +
-      '<label for="c-state">Estado' + req + '</label><select class="field" id="c-state" data-act="contact" data-k="state"><option value="">Elegir estado</option>' +
-      STATES.map(function (st) { return '<option' + (contact.state === st ? " selected" : "") + ">" + esc(st) + "</option>"; }).join("") + "</select></div>" +
-      '<div class="card"><p class="sec" style="margin-top:0">ZONA DE ENTREGA</p><select class="field" id="c-zone" data-act="zone"><option value="local"' + ((contact.zone || "local") === "local" ? " selected" : "") + '>Zona local (Plaza Santín, Sauces, Parque Industrial Toluca 2000, Foro Pegaso)</option><option value="paqueteria"' + (contact.zone === "paqueteria" ? " selected" : "") + '>Otra localidad / Envío por paquetería</option></select><p class="hint" id="zone-hint">' + esc(zoneHint(contact.zone || "local")) + '</p></div><div class="card"><p class="sec" style="margin-top:0">FORMA DE PAGO *</p>' + PAYS.map(function (o) {
+      '<label for="c-cp">Código postal' + req + '</label><input class="field cpfield" id="c-cp" type="text" inputmode="numeric" autocomplete="postal-code" data-act="contact" data-k="cp" maxlength="5" placeholder="5 dígitos" value="' + esc(contact.cp || "") + '">' +
+      '<p class="hint" id="cp-hint" aria-live="polite"></p>' +
+      '<div id="col-box"></div>' +
+      '<div class="two2"><div>' + field("city", "Ciudad o municipio" + req, "text", "address-level2") + '</div><div><label for="c-state">Estado' + req + '</label><select class="field" id="c-state" data-act="contact" data-k="state"><option value="">Elegir</option>' +
+      STATES.map(function (st) { return '<option' + (contact.state === st ? " selected" : "") + ">" + esc(st) + "</option>"; }).join("") + "</select></div></div>" +
+      field("street", "Calle y número" + req, "text", "address-line1", "", 120, "Ej. Av. Juárez 120") +
+      field("addr2", "Interior y referencias (opcional)", "text", "address-line2", "", 120, "Ej. Int. 3, portón negro") + "</div>" +
+      '<div class="card"><p class="sec" style="margin-top:0">ENVÍO *</p>' + Object.keys(ZONES).map(function (k) {
+        var z = ZONES[k];
+        return '<label class="pay ship' + (contact.zone === k ? " on" : "") + '"><input type="radio" name="zone" data-act="zone" value="' + k + '"' + (contact.zone === k ? " checked" : "") + "><span>" + esc(z.title) + "<small>" + esc(z.sub) + "</small>" + (z.area ? '<small class="area">' + esc(z.area) + "</small>" : "") + '</span><b class="zp" id="zp-' + k + '"></b></label>';
+      }).join("") + '<div id="shiptotal"></div></div>' +
+      '<div class="card"><p class="sec" style="margin-top:0">FORMA DE PAGO *</p>' + PAYS.map(function (o) {
         return '<label class="pay' + (contact.pay === o[0] ? " on" : "") + '"><input type="radio" name="pay" data-act="pay" value="' + o[0] + '"' + (contact.pay === o[0] ? " checked" : "") + "><span>" + esc(o[1]) + "<small>" + esc(o[2]) + "</small></span></label>";
       }).join("") + "</div>";
     html += '<div class="card"><label for="notes" style="margin-top:0">Comentarios (opcional)</label><textarea class="field" id="notes" data-act="notes" maxlength="600" placeholder="Ej. entregar por la tarde, factura, etc.">' + esc(notes) + "</textarea></div>" +
-      '<div class="card"><p class="sec" style="margin-top:0">TÉRMINOS Y CONDICIONES (B2C)</p><ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5;color:var(--ink)"><li><b>Descuentos sobre subtotal y envío:</b> $5,000 a $10,000 (3 % de descuento, envío absorbido por el cliente según localidad); $10,001 a $15,000 (8.5 % de descuento con envío incluido); $15,001 a $50,000 (15 % de descuento con envío incluido).</li><li><b>Gimnasios (B2C):</b> Si eres gimnasio y tu pedido está cerca de los $15,000 MXN o más, el envío se realiza directamente en tus instalaciones.</li><li><b>Envío fuera de zona local:</b> Si tu pedido es fuera de las zonas de cobertura local (' + LOCAL_ZONES + '), se cobrarán ' + money(envioForaneo()) + ' MXN de envío. Este monto se suma al confirmar tu orden y se agrega al total del pago (envío incluido desde $10,001).</li><li><b>Confirmación:</b> Los precios y existencias son preliminares y se confirman en la orden de compra vía WhatsApp (5613388882).</li><li><b>Entrega local B2C:</b> Cobertura en Plaza Santín, Sauces, Parque Industrial Toluca 2000 y Foro Pegaso (pedido mínimo $1,200 MXN). Horario de atención hasta las 18:00 h.</li><li><b>Pago y facturación:</b> Efectivo, transferencia, tarjeta en línea (Mercado Pago) o terminal al entregar, tras confirmar la orden; si se requiere factura fiscal, indicarlo en el campo Comentarios.</li></ul></div><label style="display:flex;align-items:center;gap:10px;margin:14px 0 12px;cursor:pointer;font-size:14px;font-weight:700;color:var(--ink)"><input type="checkbox" id="termsAccept" required style="width:18px;height:18px;accent-color:var(--ink);cursor:pointer;flex:0 0 auto"><span>Acepto Términos y Condiciones</span></label><div id="err"></div><button class="cta full" type="button" id="send">Enviar pedido</button>' +
+      '<div class="card terms"><p class="sec" style="margin-top:0">TÉRMINOS Y CONDICIONES</p>' + termsHtml() + "</div>" +
+      '<label style="display:flex;align-items:center;gap:10px;margin:14px 0 12px;cursor:pointer;font-size:14px;font-weight:700;color:var(--ink)"><input type="checkbox" id="termsAccept" required style="width:18px;height:18px;accent-color:var(--ink);cursor:pointer;flex:0 0 auto"><span>Acepto Términos y Condiciones</span></label><div id="err"></div><button class="cta full" type="button" id="send">Enviar pedido</button>' +
       '<p style="text-align:center;color:var(--muted);font-size:13px;margin-top:10px">Los precios se confirman en tu orden de compra.</p>';
     $("sheetin").innerHTML = html;
     $("back").onclick = closeSheet;
@@ -760,10 +834,68 @@
       $("termsAccept").onchange = function () { window._termsAccepted = !!this.checked; renderReviewTotals(); if (window._termsAccepted && $("err")) $("err").innerHTML = ""; };
     }
     renderReviewTotals();
+    renderColonias();
+    if (contact.cp) { cpAsked = ""; lookupCP(contact.cp); } else cpHint("Escribe tu código postal para ver tus colonias.");
     mountTurnstile();
   }
-  function field(k, label, type, auto, mode, max) {
-    return '<label for="c-' + k + '">' + label + '</label><input class="field" id="c-' + k + '" type="' + type + '" autocomplete="off"' + (mode ? ' inputmode="' + mode + '"' : "") + ' data-act="contact" data-k="' + k + '" maxlength="' + (max || 120) + '" value="' + esc(contact[k] || "") + '">';
+  function field(k, label, type, auto, mode, max, ph) {
+    return '<label for="c-' + k + '">' + label + '</label><input class="field" id="c-' + k + '" type="' + type + '" autocomplete="' + (auto || "off") + '"' + (mode ? ' inputmode="' + mode + '"' : "") + ' data-act="contact" data-k="' + k + '" maxlength="' + (max || 120) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : "") + ' value="' + esc(contact[k] || "") + '">';
+  }
+  // ------------------------------------------------------------ 2.17.2 · código postal → colonias
+  var cpCache = {}, cpData = null, cpAsked = "";
+  function cpHint(text, tone) { var h = $("cp-hint"); if (h) { h.textContent = text; h.style.color = tone === "bad" ? "#C4161C" : tone === "ok" ? "var(--green)" : ""; } }
+  function setField(k, v) { contact[k] = v; var el = $("c-" + k); if (el) el.value = v; }
+  function renderColonias() {
+    var box = $("col-box"); if (!box) return;
+    var req = link().general ? " *" : "";
+    var list = cpData && cpData.colonias ? cpData.colonias : [];
+    var other = !list.length || contact.colOther || (contact.col && !list.some(function (c) { return c.n === contact.col; }));
+    var opts = list.map(function (c, i) {
+      var on = !contact.colOther && contact.col === c.n;
+      return '<label class="opt' + (on ? " on" : "") + '"><input type="radio" name="col" data-act="colpick" value="' + i + '"' + (on ? " checked" : "") + "><span>" + esc(c.n) + (c.t && c.t !== "Colonia" ? "<small>" + esc(c.t) + "</small>" : "") + "</span></label>";
+    }).join("");
+    box.innerHTML = '<label>Colonia' + req + "</label>" +
+      (list.length ? '<div class="opts" role="radiogroup" aria-label="Colonias del código postal">' + opts +
+        '<label class="opt' + (other ? " on" : "") + '"><input type="radio" name="col" data-act="colpick" value="otra"' + (other ? " checked" : "") + "><span>Mi colonia no aparece</span></label></div>" : "") +
+      (other ? '<input class="field" id="c-col" type="text" autocomplete="address-level3" data-act="contact" data-k="col" maxlength="80" placeholder="Escribe tu colonia" value="' + esc(contact.col || "") + '"' + (list.length ? ' style="margin-top:8px"' : "") + ">" : "");
+  }
+  function lookupCP(cp) {
+    if (!/^\d{5}$/.test(cp)) { cpData = null; cpAsked = ""; renderColonias(); cpHint(cp ? "Escribe los 5 dígitos." : "Escribe tu código postal para ver tus colonias."); return; }
+    if (cp === cpAsked) return;
+    cpAsked = cp;
+    var apply = function (r) {
+      if (cpAsked !== cp) return;
+      cpData = r || null;
+      if (!r) { cpHint("No encontramos ese código postal. Revisa los dígitos o escribe tu colonia.", "bad"); renderColonias(); return; }
+      setField("state", STATES.indexOf(r.estado) >= 0 ? r.estado : contact.state || "");
+      setField("city", r.ciudad || r.municipio || contact.city || "");
+      if (contact.col && !r.colonias.some(function (c) { return c.n === contact.col; })) { contact.col = ""; contact.colOther = false; }
+      if (r.colonias.length === 1 && !contact.col) contact.col = r.colonias[0].n;
+      save(); renderColonias();
+      cpHint(r.municipio + ", " + r.estado + " · " + plural(r.colonias.length, "colonia", "colonias"), "ok");
+    };
+    if (cp in cpCache) return apply(cpCache[cp]);
+    cpHint("Buscando tu código postal…");
+    (demo ? Promise.resolve(DEMO_CP[cp] || null) : rpc("mx_cp_buscar", { p_cp: cp }))
+      .then(function (r) { cpCache[cp] = r || null; apply(r || null); })
+      .catch(function () { cpAsked = ""; cpData = null; renderColonias(); cpHint("No pudimos buscar el código postal; escribe tu colonia.", "bad"); });
+  }
+  /** Términos y condiciones (montos de Supabase). */
+  var pesos = function (c) { return "$" + new Intl.NumberFormat("es-MX", { maximumFractionDigits: (Number(c) || 0) % 100 ? 2 : 0, minimumFractionDigits: (Number(c) || 0) % 100 ? 2 : 0 }).format((Number(c) || 0) / 100); };
+  function termsHtml() {
+    var wa = String((data.catalog && data.catalog.whatsapp) || "5613388882").replace(/\D/g, "");
+    var li = function (t, d) { return "<li><b>" + t + "</b> " + d + "</li>"; };
+    return "<ol>" +
+      li("Precios y existencias.", "Precios en pesos mexicanos. Tu pedido es una solicitud: confirmamos existencia, precio final y total a pagar en tu orden de compra por WhatsApp (" + esc(wa) + ") antes de cualquier cobro.") +
+      li("Tiempo de entrega.", "De 1 a 5 días hábiles según la disponibilidad de cada producto en almacén. Son días hábiles de lunes a viernes, sin días festivos; los pedidos confirmados después de las 18:00 h o en fin de semana cuentan desde el siguiente día hábil. Si un producto es sobre pedido y tarda más, te avisamos antes de surtir.") +
+      li("Envío local (" + pesos(envioLocal()) + ").", "Entrega en menos de 72 horas hábiles, conforme a la disponibilidad del producto en almacén, solo en " + LOCAL_ZONES + ". Si tu dirección queda fuera de esta cobertura, el envío se cobra como paquetería y te lo confirmamos antes de cobrar.") +
+      li("Envío por paquetería (" + pesos(envioForaneo()) + ").", "A todo México, de 3 a 5 días hábiles a partir de que se confirma tu pago. El tiempo de la paquetería puede variar en zonas extendidas.") +
+      li("Envío sin costo.", "En pedidos con subtotal de productos desde " + pesos(envioGratis()) + ", local o por paquetería. Gimnasios con pedidos desde $15,000: entrega directa en sus instalaciones dentro de la cobertura local.") +
+      li("Descuentos por volumen.", "Sobre el subtotal de productos: 3 % desde $5,000, 8.5 % desde $10,001 y 15 % desde $15,001. No se acumulan con otras promociones. Cada producto tiene un precio mínimo: si un descuento lo rebasa, se ajusta y lo verás en tu resumen. El envío no tiene descuento.") +
+      li("Pago.", "Con envío por paquetería el pago es por adelantado (tarjeta en línea con Mercado Pago o transferencia) y el pedido se surte al confirmarse. Con envío local también puedes pagar en efectivo o con tarjeta al recibir.") +
+      li("Recepción, cambios y devoluciones.", "Revisa tu pedido al recibirlo. Faltantes, productos dañados o equivocados se reportan por WhatsApp dentro de las 48 horas siguientes, con foto; se cambian sin costo. No aceptamos devoluciones de productos abiertos o sin sello.") +
+      li("Facturación.", "Si necesitas factura, indícalo en Comentarios con tus datos fiscales; se emite con la fecha del pago.") +
+      "</ol>";
   }
   var STATES = ["Aguascalientes", "Baja California", "Baja California Sur", "Campeche", "Chiapas", "Chihuahua", "Ciudad de México", "Coahuila", "Colima", "Durango", "Estado de México", "Guanajuato", "Guerrero", "Hidalgo", "Jalisco", "Michoacán", "Morelos", "Nayarit", "Nuevo León", "Oaxaca", "Puebla", "Querétaro", "Quintana Roo", "San Luis Potosí", "Sinaloa", "Sonora", "Tabasco", "Tamaulipas", "Tlaxcala", "Veracruz", "Yucatán", "Zacatecas"];
   var PAYS = [
@@ -778,11 +910,11 @@
     var v = function (k) { return String(contact[k] || "").trim(); };
     var any = ADDR.some(function (k) { return v(k); });
     if (!general && !any) return "";
-    if (v("street").length < 3) return "Escribe la calle y el número de la entrega.";
-    if (v("col").length < 2) return "Escribe la colonia de la entrega.";
-    if (v("city").length < 2) return "Escribe la ciudad de la entrega.";
-    if (!/^\d{5}$/.test(v("cp"))) return "El código postal debe tener 5 dígitos.";
+    if (!/^\d{5}$/.test(v("cp"))) return "Escribe el código postal de la entrega (5 dígitos).";
+    if (v("col").length < 2) return "Elige o escribe la colonia de la entrega.";
+    if (v("city").length < 2) return "Escribe la ciudad o municipio de la entrega.";
     if (!v("state")) return "Elige el estado de la entrega.";
+    if (v("street").length < 3) return "Escribe la calle y el número de la entrega.";
     return "";
   }
   function pickPay(v) {
@@ -800,7 +932,11 @@
     }
     var addrErr = addressError(l.general);
     if (addrErr) return showErr(addrErr);
+    if (!ZONES[contact.zone]) return showErr("Elige el tipo de envío: local o por paquetería.");
     if (!contact.pay) return showErr("Elige cómo vas a pagar.");
+    // Paquetería: pago por adelantado (no hay cobro al entregar fuera de la cobertura local).
+    if (contact.zone === "paqueteria" && (contact.pay === "efectivo" || contact.pay === "tarjeta_entrega"))
+      return showErr("Con envío por paquetería el pago es por adelantado: elige tarjeta en línea o transferencia.");
     var tsAnswer = "";
     if (TURNSTILE_SITE_KEY && !demo) {
       try { tsAnswer = window.turnstile && tsWidget !== null ? window.turnstile.getResponse(tsWidget) || "" : ""; } catch (e) {}
@@ -824,12 +960,12 @@
     var dirTag = ADDR.some(function (k) { return String(contact[k] || "").trim(); })
       ? "[dir:" + ["street", "col", "addr2", "city", "state", "cp"].map(function (k) { return String(contact[k] || "").replace(/[\]~|]/g, " ").trim(); }).join("~") + "]"
       : "";
-    var totalBps = (t.q.tierBps || 0) + (t.q.volumeBps || 0); var discPct = totalBps ? (totalBps / 100) : 0; var discAmt = (t.q.tierDiscount || 0) + (t.q.volumeDiscount || 0); var zoneLbl = (contact.zone || "local") === "paqueteria" ? "Otra localidad / Envío por paquetería" : "Zona local (Plaza Santín, Sauces, Parque Industrial Toluca 2000, Foro Pegaso)";
+    var totalBps = (t.q.tierBps || 0) + (t.q.volumeBps || 0); var discPct = totalBps ? (totalBps / 100) : 0; var discAmt = (t.q.tierDiscount || 0) + (t.q.volumeDiscount || 0); var zoneLbl = ZONES[contact.zone] ? ZONES[contact.zone].title + " (" + ZONES[contact.zone].sub.split(" · ")[0] + ")" : "";
     var body = {
       p_token: token,
       p_items: items,
       p_contact: l.general ? contact : pick,
-      p_notes: [notes, extraNote, "Forma de pago: " + payLabel, "Tiempo de entrega: " + deliveryText(t), paymentNote, "Zona de entrega: " + zoneLbl, "Subtotal: " + money(t.q.subtotal), "Descuento (" + discPct + "%): -" + money(discAmt), "Envío: " + t.q.shippingText, "Total final: " + money(t.q.total), dirTag].filter(Boolean).join(" | ")
+      p_notes: [notes, extraNote, "Forma de pago: " + payLabel, "Tiempo de entrega: " + DELIVERY, paymentNote, "Envío: " + zoneLbl + " " + (t.q.freeShipping ? "sin costo" : money(t.q.shippingCost)), "Subtotal: " + money(t.q.subtotal), "Descuento (" + discPct + "%): -" + money(discAmt), "Total de productos: " + money(t.q.productsTotal), "Total final: " + money(t.q.total), dirTag].filter(Boolean).join(" | ")
     };
     if (tsAnswer) body.turnstile = tsAnswer;
     var payOnline = contact.pay === "tarjeta_linea";
@@ -850,21 +986,25 @@
     sendOrder(body).then(done).catch(function () { done(null); });
   }
   function openConfirm(t) {
-    var q = t.q, out = (contact.zone || "local") === "paqueteria", box = $("confirm");
+    var q = t.q, z = ZONES[q.zone], box = $("confirm");
     var row = function (a, b, cls) { return '<div class="row' + (cls ? " " + cls : "") + '"><span>' + a + "</span><b>" + b + "</b></div>"; };
+    var shipNote = q.zone === "local"
+      ? "<b>Envío local:</b> menos de 72 horas hábiles, conforme a la disponibilidad del producto en almacén, solo en " + esc(LOCAL_ZONES) + ". Si tu dirección queda fuera de esa cobertura, el envío se cobra como paquetería (" + money(envioForaneo()) + ") y te lo confirmamos antes de cobrar."
+      : "<b>Envío por paquetería:</b> de 3 a 5 días hábiles a partir de que se confirma tu pago (por adelantado: tarjeta en línea o transferencia).";
     box.innerHTML = '<div class="dim" data-cf="no"></div><div class="panel" role="dialog" aria-modal="true" aria-labelledby="cf-t"><div class="handle"></div>' +
       '<div class="head"><b id="cf-t">Confirma tu pedido</b><button class="xbtn" type="button" data-cf="no" aria-label="Cerrar">' + ICON_X + "</button></div>" +
       '<div class="fbody">' +
       row("Productos", esc(plural(t.pieces, "pieza", "piezas"))) +
       row("Subtotal", money(q.subtotal)) +
       (q.tierDiscount + q.volumeDiscount ? row("Descuentos", "−" + money(q.tierDiscount + q.volumeDiscount), "off") : "") +
-      row("Envío", esc(q.shippingCost ? money(q.shippingCost) : q.shippingText || "Por confirmar")) +
+      row("Total de productos", money(q.productsTotal)) +
+      row(esc(z ? z.title : "Envío"), q.freeShipping ? "Sin costo" : money(q.shippingCost)) +
       row("Total a pagar", money(q.total), "total") +
-      '<div class="note ' + (out ? "warn" : "ok") + '" id="cf-ship"><b>Envío fuera de zona local.</b> Si tu pedido es fuera de las zonas de cobertura local (' + esc(LOCAL_ZONES) + "), se cobrarán <b>" + money(envioForaneo()) + " MXN de envío</b>. Este monto se suma al confirmar tu orden y se agrega al total del pago" +
-      (out ? (q.shippingCost ? " (ya está incluido en el total de arriba)." : ". Tu pedido ya tiene envío incluido.") : ". Si tu dirección resulta fuera de la zona local, te lo indicamos en tu orden de compra.") + "</div>" +
-      '<label class="pay on" style="margin-top:12px"><input type="checkbox" id="cf-ok"><span>Entiendo y acepto el costo de envío según los Términos y Condiciones</span></label>' +
+      row("Tiempo de entrega", DELIVERY) +
+      '<div class="note ' + (q.zone === "local" ? "ok" : "warn") + '" id="cf-ship">' + shipNote + " El total se confirma en tu orden de compra antes de cualquier cobro.</div>" +
+      '<label class="pay on" style="margin-top:12px"><input type="checkbox" id="cf-ok"><span>Entiendo el costo y el tiempo de envío según los Términos y Condiciones</span></label>' +
       "</div>" +
-      '<button class="fgo" type="button" id="cf-go" data-cf="yes" disabled>Confirmar y enviar</button>' +
+      '<button class="fgo" type="button" id="cf-go" data-cf="yes" disabled>Confirmar y enviar · ' + money(q.total) + "</button>" +
       '<button class="ghost" type="button" data-cf="no">Revisar mi pedido</button></div>';
     box.classList.add("on");
     $("cf-ok").onchange = function () { $("cf-go").disabled = !this.checked; };
@@ -991,6 +1131,10 @@
     Object.keys(cart).forEach(function (id) { if (!byId[id]) delete cart[id]; else cart[id] = Math.min(cart[id], maxOf(byId[id])); }); var lk = link(); const ttlH = Number(lk.token_ttl_hours || 12); const expMs = lk.expires_at ? Date.parse(lk.expires_at) : ((Date.parse(lk.updated_at || lk.created_at || "") || Date.now()) + ttlH * 3600000); const remMs = expMs - Date.now(); if (remMs <= 0) { window._tokExpired = true; var waNum = String((d.catalog && d.catalog.whatsapp) || "").replace(/[^0-9]/g, ""); var waUrl = "https://wa.me/" + (waNum.length >= 10 ? (waNum.length === 10 ? "52" + waNum : waNum) : "") + "?text=" + encodeURIComponent("Hola, mi enlace de pedido expiró tras sus " + ttlH + " horas de vigencia. ¿Me lo pueden renovar desde la app?"); $("main").innerHTML = '<div class="card hero"><h1>Enlace expirado</h1><p>Este enlace ha expirado tras sus ' + ttlH + ' horas de vigencia.</p><a class="btn" href="' + waUrl + '" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:12px;padding:10px 16px;border-radius:10px;background:#25D366;color:#fff;font-weight:700;text-decoration:none">Contactar por WhatsApp para renovar</a></div>'; return; } window._tokExpired = false;
     renderMain();
   }
+  var DEMO_CP = {
+    "50000": { cp: "50000", estado: "Estado de México", municipio: "Toluca", ciudad: "Toluca de Lerdo", colonias: [{ n: "Toluca de Lerdo Centro", t: "Colonia" }] },
+    "52140": { cp: "52140", estado: "Estado de México", municipio: "Metepec", ciudad: "Metepec", colonias: [{ n: "Casa Blanca", t: "Colonia" }, { n: "Hacienda las Fuentes", t: "Fraccionamiento" }, { n: "Rancho San Lucas", t: "Fraccionamiento" }, { n: "San Francisco Coaxusco", t: "Pueblo" }] }
+  };
   var DEMO = {
     link: { name: "Suplementos del Norte", tier_name: "Plata", tier_bps: 1000, general: false },
     catalog: {
