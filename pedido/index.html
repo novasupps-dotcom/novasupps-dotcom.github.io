@@ -944,6 +944,10 @@
     products = ((d.catalog && d.catalog.products) || []).filter(function (p) { return p && p.id && Number(p.price) > 0; });
     window._remoteFallbackId = products[0] ? products[0].id : "";
      
+    // 2.17.1 · Con el catálogo de Supabase (fuente única de precios, fotos y sabores) NO se mezcla
+    // la lista fija de abajo: agregaba productos con precio escrito a mano y, al buscar por nombre,
+    // marcaba productos de otra marca o presentación (p. ej. Amino Energy de ON → el de BHP).
+    var fromSupabase = !!(d.catalog && d.catalog.source === "supabase");
     var matchedB2C = {};
     products.forEach(function (p) {
       p._remote = true;
@@ -953,7 +957,7 @@
        
       var hay = fold((p.brand || "") + " " + (p.name || ""));
       if (/biotina\s*\+\s*colageno/.test(hay) && /catalogo\/blife-biotina/i.test(String(p.photo || ""))) p.photo = "";
-      for (var i = 0; i < B2C_CATALOG.length; i++) {
+      for (var i = 0; !fromSupabase && i < B2C_CATALOG.length; i++) {
         var b2c = B2C_CATALOG[i];
         if (!matchedB2C[b2c.id] && (p.id === b2c.id || p.code === b2c.id || b2c.rx.test(hay))) {
           matchedB2C[b2c.id] = true;
@@ -965,7 +969,7 @@
       p._tipo = classifyTipo(p);
       p.tipo = p._tipo;
     });
-    if (!demo) {
+    if (!demo && !fromSupabase) {
       B2C_CATALOG.forEach(function (b2c) {
         if (!matchedB2C[b2c.id]) {
           var copy = {
