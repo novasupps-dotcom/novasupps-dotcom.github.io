@@ -189,6 +189,22 @@
   .pay small.bad { color: #C4161C; font-weight: 600; }
   .pay small.ok { color: var(--green); font-weight: 600; }
   .pay small.codnote { color: var(--muted); font-style: italic; }
+  /* 2.17.6 · Barra de beneficios y resumen de pago */
+  .bene { margin-top: 12px; padding: 14px 14px 12px; border-radius: 16px; background: #F2F2F7; }
+  .bene-bar { position: relative; height: 6px; margin: 4px 0 0 2px; border-radius: 3px; background: rgba(118, 118, 128, .2); overflow: hidden; }
+  .bene-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--green); transition: width .35s ease-out; }
+  .bene-steps { position: relative; display: grid; gap: 4px; margin-top: -11px; text-align: center; }
+  .bene-steps > div { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+  .bene-steps .dot { width: 16px; height: 16px; border-radius: 8px; background: #fff; box-shadow: inset 0 0 0 2px rgba(118, 118, 128, .45); display: grid; place-items: center; margin-bottom: 6px; }
+  .bene-steps .hit .dot { background: var(--green); box-shadow: none; }
+  .bene-steps .dot svg { width: 11px; height: 11px; stroke: #fff; fill: none; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+  .bene-steps b { font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  .bene-steps small { font-size: 11.5px; color: var(--muted); line-height: 1.25; }
+  .bene-steps .hit b, .bene-steps .hit small { color: var(--green); }
+  .bene-msg { margin: 10px 2px 0; font-size: 14px; color: var(--ink); text-align: center; }
+  .bene-msg b { color: var(--green); }
+  .summary .row span small { display: block; color: var(--muted); font-size: 13px; }
+  .summary .row b.muted { color: var(--muted); font-weight: 600; }
   .lugar { margin: 2px 0 10px; }
   .lugar > label { margin-top: 4px; }
   .opts.freemode { margin: 4px 0 10px; }
@@ -938,23 +954,55 @@
       if (cod && note) note.remove();
       if (!cod && inp.checked) { inp.checked = false; contact.pay = ""; lab && lab.classList.remove("on"); }
     });
-    var box = $("shiptotal"); if (!box) return;
-    box.innerHTML = !q.zone
-      ? '<p class="hint" style="margin-top:10px">' + (q.freeShipping ? "Tu pedido tiene envío sin costo." : "Envío sin costo en pedidos desde " + money(envioGratis()) + ".") + "</p>"
-      : '<div class="row" style="margin-top:6px"><span>Envío</span><b>' + (q.freeShipping ? "Sin costo" : money(q.shippingCost)) + '</b></div><div class="row total"><span>Total a pagar</span><b>' + money(q.total) + "</b></div>" +
-        (!q.freeShipping && q.subtotal < envioGratis() ? '<p class="hint">Agrega ' + money(envioGratis() - q.subtotal) + " y tu envío es sin costo.</p>" : "");
+  }
+  /** 2.17.6 · Entrega estimada según el envío elegido. */
+  function deliveryEta(q) {
+    var m = deliveryMode(q);
+    return m === "local" ? "Menos de 72 horas hábiles" : m === "paqueteria" ? "3 a 5 días hábiles después de confirmar tu pago" : DELIVERY;
+  }
+  /**
+   * 2.17.6 · Barra de beneficios: las metas de descuento por volumen y el envío gratis en una sola
+   * línea (los puntos van a la misma distancia; el avance se llena por tramos).
+   */
+  function benefitsHtml(q) {
+    var steps = [{ min: 500000, txt: "3 %" }, { min: 1000001, txt: "8.5 %" }, { min: 1500001, txt: "15 %" }];
+    var gr = envioGratis(), merged = false;
+    steps.forEach(function (st) { if (Math.abs(st.min - gr) <= 100) { st.min = Math.max(st.min, gr); st.txt += " + envío gratis"; merged = true; } });
+    if (!merged) steps.push({ min: gr, txt: "Envío gratis" });
+    steps.sort(function (a, z) { return a.min - z.min; });
+    // Cada meta está al centro de su columna; la barra va del borde izquierdo a la última meta.
+    var sub = q.subtotal, n = steps.length, ni = -1;
+    steps.some(function (st, i) { if (sub < st.min) { ni = i; return true; } return false; });
+    var at = ni < 0 ? (n - 0.5) / n : (function () {
+      var a = ni ? (ni - 0.5) / n : 0, z = (ni + 0.5) / n, lo = ni ? steps[ni - 1].min : 0;
+      return a + (z - a) * Math.max(0, sub - lo) / (steps[ni].min - lo);
+    })();
+    var fill = at / ((n - 0.5) / n), next = ni < 0 ? null : steps[ni];
+    var whole = function (c) { return pesos(Math.ceil(c / 100) * 100); };
+    return '<div class="bene" role="group" aria-label="Beneficios por monto"><div class="bene-bar" style="margin-right:' + Math.round(500 / n) / 10 + '%"><i style="width:' + Math.round(fill * 1000) / 10 + '%"></i></div>' +
+      '<div class="bene-steps" style="grid-template-columns:repeat(' + n + ',1fr)">' + steps.map(function (st) {
+        var done = sub >= st.min;
+        return '<div class="' + (done ? "hit" : "") + '"><span class="dot">' + (done ? ICON_CHECK : "") + "</span><b>" + whole(st.min) + "</b><small>" + st.txt + (/envío gratis$/i.test(st.txt) || /^Envío/.test(st.txt) ? "" : " de descuento") + "</small></div>";
+      }).join("") + "</div>" +
+      '<p class="bene-msg">' + (next ? "Te faltan <b>" + money(next.min - sub) + "</b> para " + (/^Envío/.test(next.txt) ? "tu envío gratis" : ni === 0 ? "tu primer descuento (" + next.txt + ")" : next.txt + " de descuento").replace("+ envío gratis de descuento", "de descuento + envío gratis") + "." : "¡Ya tienes el máximo beneficio: 15 % de descuento y envío gratis!") + "</p></div>";
   }
   function renderReviewTotals() {
     var t = totals(), q = t.q, c = data.catalog, el = $("totals");
     if (!el) return;
     var below = c.minOrder && q.subtotal < c.minOrder;
+    var bene = $("benefits"); if (bene) bene.innerHTML = benefitsHtml(q);
+    var mode = deliveryMode(q);
+    var shipLabel = q.freeShipping ? "Envío gratis" + (mode === "local" ? " · local" : mode === "paqueteria" ? " · paquetería" : "")
+      : q.zone ? ZONES[q.zone].title : "Envío";
+    var place = mode === "local" && contact.lugar ? "<small>" + esc(contact.lugar) + "</small>" : "";
     el.innerHTML =
-      '<div class="row"><span>Subtotal</span><b>' + money(q.subtotal) + "</b></div>" +
+      '<div class="row"><span>Subtotal · ' + plural(t.pieces, "pieza", "piezas") + "</span><b>" + money(q.subtotal) + "</b></div>" +
       (q.tierDiscount ? '<div class="row off"><span>Nivel ' + esc(link().tier_name) + " (" + bpsLabel(q.tierBps) + ")</span><b>−" + money(q.tierDiscount) + "</b></div>" : "") +
-      (q.volumeDiscount ? '<div class="row off"><span>Volumen (' + bpsLabel(q.volumeBps) + ")</span><b>−" + money(q.volumeDiscount) + "</b></div>" : "") +
+      (q.volumeDiscount ? '<div class="row off"><span>Descuento por volumen (' + bpsLabel(q.volumeBps) + ")</span><b>−" + money(q.volumeDiscount) + "</b></div>" : "") +
       (q.floorLimited ? '<div class="note warn">Algunos productos ya están en su precio mínimo: el descuento se ajustó.</div>' : "") +
-      '<div class="row"><span>Tiempo de entrega</span><b>' + DELIVERY + "</b></div>" + '<div class="row total"><span>Total de productos</span><b>' + money(q.productsTotal) + "</b></div>" +
-      (q.next ? '<div class="note ok">Agrega ' + money(q.next.missing) + " y obtén " + bpsLabel(q.next.bps) + " más por volumen.</div>" : "") +
+      '<div class="row"><span>' + esc(shipLabel) + place + "</span><b" + (q.zone ? "" : ' class="muted"') + ">" + (q.freeShipping ? "Gratis" : q.zone ? money(q.shippingCost) : "Elige arriba") + "</b></div>" +
+      '<div class="row"><span>Entrega estimada</span><b>' + esc(deliveryEta(q)) + "</b></div>" +
+      '<div class="row total"><span>Total a pagar</span><b>' + money(q.total) + "</b></div>" +
       (below ? '<div class="note bad">El pedido mínimo es de ' + money(c.minOrder) + " (subtotal).</div>" : "");
     renderShipping(t);
     var btn = $("send");
@@ -975,7 +1023,7 @@
       var p = x.p;
       return '<div class="line"><div class="ph open" data-act="open" data-id="' + esc(p.id) + '">' + photo(p) + '</div><div class="t open" data-act="open" data-id="' + esc(p.id) + '"><div>' + esc(p.name) + "</div><span>" + esc(p.brand) + " · " + money(yourPrice(p)) + " c/u" + (missingFlavor(p.id) ? ' · <em class="miss">Elige sabor</em>' : noteFor(p.id) ? " · " + esc(noteFor(p.id)) : manyFlavors(p) ? " · Elegir sabores" : "") + "</span></div>" +
         '<div class="step"><button type="button" data-act="minus" data-id="' + esc(p.id) + '" aria-label="Quitar uno de ' + esc(p.name) + '">−</button>' + (needsFlavor(p) ? '<input readonly tabindex="-1" data-act="open" data-id="' + esc(p.id) + '" value="' + x.qty + '" aria-label="Cantidad de ' + esc(p.name) + '">' : '<input inputmode="numeric" data-act="qty" data-id="' + esc(p.id) + '" value="' + x.qty + '" aria-label="Cantidad de ' + esc(p.name) + '">') + '<button class="plus" type="button" data-act="plus" data-id="' + esc(p.id) + '" aria-label="Agregar uno de ' + esc(p.name) + '">+</button></div></div>';
-    }).join("") + '<div id="totals"></div></div>';
+    }).join("") + '<div id="benefits"></div></div>';
     if (l.general) {
       html += '<div class="card"><p class="sec" style="margin-top:0">TUS DATOS</p>' +
         field("name", "Tu nombre *", "text", "name") + field("business", "Negocio o gimnasio", "text", "organization") +
@@ -994,11 +1042,12 @@
       STATES.map(function (st) { return '<option' + (contact.state === st ? " selected" : "") + ">" + esc(st) + "</option>"; }).join("") + "</select></div></div>" +
       field("street", "Calle y número" + req, "text", "address-line1", "", 120, "Ej. Av. Juárez 120") +
       field("addr2", "Interior y referencias (opcional)", "text", "address-line2", "", 120, "Ej. Int. 3, portón negro") + "</div>" +
-      '<div class="card"><p class="sec" style="margin-top:0">ENVÍO *</p><div id="zones"></div><div id="shiptotal"></div></div>' +
+      '<div class="card"><p class="sec" style="margin-top:0">ENVÍO *</p><div id="zones"></div></div>' +
       '<div class="card"><p class="sec" style="margin-top:0">FORMA DE PAGO *</p>' + PAYS.map(function (o) {
         return '<label class="pay' + (contact.pay === o[0] ? " on" : "") + '"><input type="radio" name="pay" data-act="pay" value="' + o[0] + '"' + (contact.pay === o[0] ? " checked" : "") + "><span>" + esc(o[1]) + "<small>" + esc(o[2]) + "</small></span></label>";
       }).join("") + "</div>";
     html += '<div class="card"><label for="notes" style="margin-top:0">Comentarios (opcional)</label><textarea class="field" id="notes" data-act="notes" maxlength="600" placeholder="Ej. entregar por la tarde, factura, etc.">' + esc(notes) + "</textarea></div>" +
+      '<div class="card summary"><p class="sec" style="margin-top:0">RESUMEN DE PAGO</p><div id="totals"></div></div>' +
       '<div class="card terms"><p class="sec" style="margin-top:0">TÉRMINOS Y CONDICIONES</p>' + termsHtml() + "</div>" +
       '<label style="display:flex;align-items:center;gap:10px;margin:14px 0 12px;cursor:pointer;font-size:14px;font-weight:700;color:var(--ink)"><input type="checkbox" id="termsAccept" required style="width:18px;height:18px;accent-color:var(--ink);cursor:pointer;flex:0 0 auto"><span>Acepto Términos y Condiciones</span></label><div id="err"></div><button class="cta full" type="button" id="send">Enviar pedido</button>' +
       '<p style="text-align:center;color:var(--muted);font-size:13px;margin-top:10px">Los precios se confirman en tu orden de compra.</p>';
@@ -1158,7 +1207,7 @@
       p_token: token,
       p_items: items,
       p_contact: l.general ? contact : pick,
-      p_notes: [notes, extraNote, "Forma de pago: " + payLabel, "Tiempo de entrega: " + DELIVERY, paymentNote, "Envío: " + zoneLbl + " " + (t.q.freeShipping ? "sin costo" : money(t.q.shippingCost)), "Subtotal: " + money(t.q.subtotal), "Descuento (" + discPct + "%): -" + money(discAmt), "Total de productos: " + money(t.q.productsTotal), "Total final: " + money(t.q.total), dirTag].filter(Boolean).join(" | ")
+      p_notes: [notes, extraNote, "Forma de pago: " + payLabel, "Entrega estimada: " + deliveryEta(t.q), paymentNote, "Envío: " + zoneLbl + " " + (t.q.freeShipping ? "sin costo" : money(t.q.shippingCost)), "Subtotal: " + money(t.q.subtotal), "Descuento (" + discPct + "%): -" + money(discAmt), "Total de productos: " + money(t.q.productsTotal), "Total final: " + money(t.q.total), dirTag].filter(Boolean).join(" | ")
     };
     if (tsAnswer) body.turnstile = tsAnswer;
     var payOnline = contact.pay === "tarjeta_linea";
@@ -1195,7 +1244,7 @@
       row(q.freeShipping ? "Envío" : esc(z ? z.title : "Envío"), q.freeShipping ? "Gratis" : money(q.shippingCost)) +
       (mode === "local" && contact.lugar ? row("Lugar de entrega", esc(contact.lugar)) : "") +
       row("Total a pagar", money(q.total), "total") +
-      row("Tiempo de entrega", DELIVERY) +
+      row("Entrega estimada", esc(deliveryEta(q))) +
       '<div class="note ' + (q.zone === "paqueteria" ? "warn" : "ok") + '" id="cf-ship">' + shipNote + " El total se confirma en tu orden de compra antes de cualquier cobro.</div>" +
       '<label class="pay on" style="margin-top:12px"><input type="checkbox" id="cf-ok"><span>Entiendo el costo y el tiempo de envío según los Términos y Condiciones</span></label>' +
       "</div>" +
