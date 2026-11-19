@@ -185,6 +185,10 @@
   .opt small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 400; }
   .opt.on { background: var(--redSoft); color: var(--red); font-weight: 700; }
   .pay.ship { align-items: center; }
+  .pay.off { opacity: .55; cursor: not-allowed; }
+  .pay small.bad { color: #C4161C; font-weight: 600; }
+  .pay small.ok { color: var(--green); font-weight: 600; }
+  .pay small.codnote { color: var(--muted); font-style: italic; }
   .pay.ship.free { background: var(--greenSoft); box-shadow: inset 0 0 0 2px var(--green); cursor: default; }
   .pay.ship.free .zp { color: var(--green); }
   .colpick { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 10px 14px; border: 0; border-radius: 14px; background: var(--redSoft); color: var(--red); text-align: left; font-size: 16px; font-weight: 700; }
@@ -340,6 +344,15 @@
   var envioGratis = function () { return cents("envio_gratis_desde", 1000100); };
   var LOCAL_ZONES = "Plaza Santín, Sauces, Parque Industrial Toluca 2000 y Foro Pegaso";
   var DELIVERY = "1 a 5 días hábiles, según disponibilidad";
+  /** 2.17.5 · Cobertura local por C.P. (b2b_cobertura_local en Supabase). Sin lista = sin restricción. */
+  var coverage = function () { var c = data && data.catalog && data.catalog.cobertura_local; return Array.isArray(c) && c.length ? c.map(String) : null; };
+  /** «si» o «no» si el C.P. ya se escribió y hay lista de cobertura; «» si aún no se sabe. */
+  function localStatus() { var list = coverage(), cp = String(contact.cp || ""); if (!list || !/^\d{5}$/.test(cp)) return ""; return list.indexOf(cp) >= 0 ? "si" : "no"; }
+  /** Cómo se entrega: con envío gratis lo decide el C.P.; si no, la opción elegida. */
+  function deliveryMode(q) { if (q.freeShipping) { var st = localStatus(); return st === "si" ? "local" : st === "no" ? "paqueteria" : ""; } return q.zone; }
+  var COD = ["efectivo", "tarjeta_entrega"];
+  /** Pago al entregar: solo con entrega local (fuera de la cobertura, por adelantado). */
+  function codAllowed(q) { return localStatus() !== "no" && deliveryMode(q) !== "paqueteria"; }
   var ZONES = {
     paqueteria: { title: "Envío por paquetería", sub: "3 a 5 días hábiles · a todo México", cost: envioForaneo },
     local: { title: "Envío local", sub: "Menos de 72 horas hábiles · según disponibilidad en almacén", area: "Solo en " + LOCAL_ZONES, cost: envioLocal }
@@ -376,7 +389,9 @@
     q.productsTotal = q.total;
     var free = subtotal > 0 && subtotal >= envioGratis();
     // 2.17.4 · Con envío gratis solo hay una opción («Tu envío es gratis»): ya no se elige local o paquetería.
-    var z = free ? "gratis" : ZONES[contact && contact.zone] ? contact.zone : "";
+    var zSel = contact && contact.zone;
+    if (zSel === "local" && localStatus() === "no") zSel = ""; // fuera de la cobertura no hay envío local
+    var z = free ? "gratis" : ZONES[zSel] ? zSel : "";
     var shipCost = z && !free ? ZONES[z].cost() : 0;
     q.zone = z; q.freeShipping = free; q.shippingCost = shipCost;
     q.shippingText = !z ? "" : free ? "Envío gratis" : ZONES[z].title + ": " + money(shipCost);
@@ -646,7 +661,7 @@
         var k = t.getAttribute("data-k"), val = t.value.slice(0, 120);
         if (k === "cp") { val = val.replace(/\D/g, "").slice(0, 5); if (t.value !== val) t.value = val; }
         contact[k] = val; save();
-        if (k === "cp") lookupCP(val);
+        if (k === "cp") { lookupCP(val); renderReviewTotals(); }
       }
       if (act === "pay") pickPay(t.value);
     } else if (e.type === "change" && act === "zone") {
@@ -883,12 +898,30 @@
   /** 2.17.2 · Precio de cada opción de envío y total a pagar (con envío) en la tarjeta de envío. */
   function renderShipping(t) {
     var q = t.q, zb = $("zones");
+    var st = localStatus();
     if (zb) zb.innerHTML = q.freeShipping
-      ? '<div class="pay ship on free"><span>Tu envío es gratis<small>Tu pedido es de ' + pesos(envioGratis()) + ' o más. Entrega local en menos de 72 horas hábiles o por paquetería de 3 a 5 días hábiles, según tu dirección; te lo confirmamos en tu orden de compra.</small></span><b class="zp">Gratis</b></div>'
+      ? '<div class="pay ship on free"><span>Tu envío es gratis<small>' +
+          (st === "si" ? "Tu C.P. está en la cobertura local: entrega en menos de 72 horas hábiles, según disponibilidad."
+            : st === "no" ? "Por paquetería, de 3 a 5 días hábiles a partir de que se confirma tu pago (por adelantado)."
+            : "Tu pedido es de " + pesos(envioGratis()) + " o más. Entrega local o por paquetería según tu código postal.") +
+          '</small></span><b class="zp">Gratis</b></div>'
       : Object.keys(ZONES).map(function (k) {
-          var z = ZONES[k], on = contact.zone === k;
-          return '<label class="pay ship' + (on ? " on" : "") + '"><input type="radio" name="zone" data-act="zone" value="' + k + '"' + (on ? " checked" : "") + "><span>" + esc(z.title) + "<small>" + esc(z.sub) + "</small>" + (z.area ? '<small class="area">' + esc(z.area) + "</small>" : "") + '</span><b class="zp">+' + money(z.cost()) + "</b></label>";
+          var z = ZONES[k], off = k === "local" && st === "no", on = !off && contact.zone === k;
+          var extra = k === "local" && st === "no" ? '<small class="area bad">Tu C.P. está fuera de la cobertura local</small>'
+            : k === "local" && st === "si" ? '<small class="area ok">✓ Tu C.P. está en la cobertura local</small>'
+            : z.area ? '<small class="area">' + esc(z.area) + "</small>" : "";
+          return '<label class="pay ship' + (on ? " on" : "") + (off ? " off" : "") + '"><input type="radio" name="zone" data-act="zone" value="' + k + '"' + (on ? " checked" : "") + (off ? " disabled" : "") + "><span>" + esc(z.title) + "<small>" + esc(z.sub) + "</small>" + extra + '</span><b class="zp">+' + money(z.cost()) + "</b></label>";
         }).join("");
+    // Pago al entregar solo con entrega local.
+    var cod = codAllowed(q);
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="pay"]'), function (inp) {
+      if (COD.indexOf(inp.value) < 0) return;
+      var lab = inp.closest(".pay"); inp.disabled = !cod; if (lab) lab.classList.toggle("off", !cod);
+      var note = lab && lab.querySelector(".codnote");
+      if (!cod && lab && !note) lab.querySelector("span").insertAdjacentHTML("beforeend", '<small class="codnote">Solo con entrega local</small>');
+      if (cod && note) note.remove();
+      if (!cod && inp.checked) { inp.checked = false; contact.pay = ""; lab && lab.classList.remove("on"); }
+    });
     var box = $("shiptotal"); if (!box) return;
     box.innerHTML = !q.zone
       ? '<p class="hint" style="margin-top:10px">' + (q.freeShipping ? "Tu pedido tiene envío sin costo." : "Envío sin costo en pedidos desde " + money(envioGratis()) + ".") + "</p>"
@@ -1027,11 +1060,11 @@
     return "<ol>" +
       li("Precios y existencias.", "Precios en pesos mexicanos. Tu pedido es una solicitud: confirmamos existencia, precio final y total a pagar en tu orden de compra por WhatsApp (" + esc(wa) + ") antes de cualquier cobro.") +
       li("Tiempo de entrega.", "De 1 a 5 días hábiles según la disponibilidad de cada producto en almacén. Son días hábiles de lunes a viernes, sin días festivos; los pedidos confirmados después de las 18:00 h o en fin de semana cuentan desde el siguiente día hábil. Si un producto es sobre pedido y tarda más, te avisamos antes de surtir.") +
-      li("Envío local (" + pesos(envioLocal()) + ").", "Entrega en menos de 72 horas hábiles, conforme a la disponibilidad del producto en almacén, solo en " + LOCAL_ZONES + ". Si tu dirección queda fuera de esta cobertura, el envío se cobra como paquetería y te lo confirmamos antes de cobrar.") +
+      li("Envío local (" + pesos(envioLocal()) + ").", "Entrega en menos de 72 horas hábiles, conforme a la disponibilidad del producto en almacén, solo en los códigos postales de la cobertura local (" + LOCAL_ZONES + (coverage() ? ": C.P. " + coverage().join(", ") : "") + "). Al escribir tu C.P. te decimos si está dentro; si no, el envío es por paquetería.") +
       li("Envío por paquetería (" + pesos(envioForaneo()) + ").", "A todo México, de 3 a 5 días hábiles a partir de que se confirma tu pago. El tiempo de la paquetería puede variar en zonas extendidas.") +
       li("Envío sin costo.", "En pedidos con subtotal de productos desde " + pesos(envioGratis()) + ", local o por paquetería. Gimnasios con pedidos desde $15,000: entrega directa en sus instalaciones dentro de la cobertura local.") +
       li("Descuentos por volumen.", "Sobre el subtotal de productos: 3 % desde $5,000, 8.5 % desde $10,001 y 15 % desde $15,001. No se acumulan con otras promociones. Cada producto tiene un precio mínimo: si un descuento lo rebasa, se ajusta y lo verás en tu resumen. El envío no tiene descuento.") +
-      li("Pago.", "Con envío por paquetería el pago es por adelantado (tarjeta en línea con Mercado Pago o transferencia) y el pedido se surte al confirmarse. Con envío local también puedes pagar en efectivo o con tarjeta al recibir.") +
+      li("Pago.", "Con envío por paquetería, incluido el envío gratis fuera de la cobertura local, el pago es por adelantado (tarjeta en línea con Mercado Pago o transferencia) y el pedido se surte al confirmarse. Con entrega local también puedes pagar en efectivo o con tarjeta al recibir.") +
       li("Recepción, cambios y devoluciones.", "Revisa tu pedido al recibirlo. Faltantes, productos dañados o equivocados se reportan por WhatsApp dentro de las 48 horas siguientes, con foto; se cambian sin costo. No aceptamos devoluciones de productos abiertos o sin sello.") +
       li("Facturación.", "Si necesitas factura, indícalo en Comentarios con tus datos fiscales; se emite con la fecha del pago.") +
       "</ol>";
@@ -1074,10 +1107,10 @@
     }
     var addrErr = addressError(l.general);
     if (addrErr) return showErr(addrErr);
-    if (!t.q.freeShipping && !ZONES[contact.zone]) return showErr("Elige el tipo de envío: local o por paquetería.");
+    if (!t.q.freeShipping && !t.q.zone) return showErr(contact.zone === "local" && localStatus() === "no" ? "Tu C.P. está fuera de la cobertura local: elige envío por paquetería." : "Elige el tipo de envío: local o por paquetería.");
     if (!contact.pay) return showErr("Elige cómo vas a pagar.");
-    // Paquetería: pago por adelantado (no hay cobro al entregar fuera de la cobertura local).
-    if (!t.q.freeShipping && contact.zone === "paqueteria" && (contact.pay === "efectivo" || contact.pay === "tarjeta_entrega"))
+    // Pago al entregar solo con entrega local; fuera de la cobertura (paquetería), por adelantado.
+    if (COD.indexOf(contact.pay) >= 0 && !codAllowed(t.q))
       return showErr("Con envío por paquetería el pago es por adelantado: elige tarjeta en línea o transferencia.");
     var tsAnswer = "";
     if (TURNSTILE_SITE_KEY && !demo) {
@@ -1102,7 +1135,7 @@
     var dirTag = ADDR.some(function (k) { return String(contact[k] || "").trim(); })
       ? "[dir:" + ["street", "col", "addr2", "city", "state", "cp"].map(function (k) { return String(contact[k] || "").replace(/[\]~|]/g, " ").trim(); }).join("~") + "]"
       : "";
-    var totalBps = (t.q.tierBps || 0) + (t.q.volumeBps || 0); var discPct = totalBps ? (totalBps / 100) : 0; var discAmt = (t.q.tierDiscount || 0) + (t.q.volumeDiscount || 0); var zoneLbl = t.q.freeShipping ? "Envío gratis (pedido desde " + money(envioGratis()) + "; local o paquetería según la dirección)" : ZONES[contact.zone] ? ZONES[contact.zone].title + " (" + ZONES[contact.zone].sub.split(" · ")[0] + ")" : "";
+    var totalBps = (t.q.tierBps || 0) + (t.q.volumeBps || 0); var discPct = totalBps ? (totalBps / 100) : 0; var discAmt = (t.q.tierDiscount || 0) + (t.q.volumeDiscount || 0); var zoneLbl = t.q.freeShipping ? "Envío gratis " + (deliveryMode(t.q) === "local" ? "local" : deliveryMode(t.q) === "paqueteria" ? "por paquetería" : "(local o paquetería según la dirección)") + " (pedido desde " + money(envioGratis()) + ")" : ZONES[contact.zone] ? ZONES[contact.zone].title + " (" + ZONES[contact.zone].sub.split(" · ")[0] + ")" : "";
     var body = {
       p_token: token,
       p_items: items,
@@ -1130,8 +1163,11 @@
   function openConfirm(t) {
     var q = t.q, z = ZONES[q.zone], box = $("confirm");
     var row = function (a, b, cls) { return '<div class="row' + (cls ? " " + cls : "") + '"><span>' + a + "</span><b>" + b + "</b></div>"; };
+    var mode = deliveryMode(q);
     var shipNote = q.freeShipping
-      ? "<b>Envío gratis:</b> entrega local en menos de 72 horas hábiles (" + esc(LOCAL_ZONES) + ") o por paquetería de 3 a 5 días hábiles, según tu dirección. Fuera de la cobertura local el pago es por adelantado."
+      ? (mode === "local" ? "<b>Envío gratis local:</b> menos de 72 horas hábiles, conforme a la disponibilidad del producto en almacén."
+        : mode === "paqueteria" ? "<b>Envío gratis por paquetería:</b> de 3 a 5 días hábiles a partir de que se confirma tu pago (por adelantado: tarjeta en línea o transferencia)."
+        : "<b>Envío gratis:</b> local o por paquetería según tu dirección; fuera de la cobertura local el pago es por adelantado.")
       : q.zone === "local"
       ? "<b>Envío local:</b> menos de 72 horas hábiles, conforme a la disponibilidad del producto en almacén, solo en " + esc(LOCAL_ZONES) + ". Si tu dirección queda fuera de esa cobertura, el envío se cobra como paquetería (" + money(envioForaneo()) + ") y te lo confirmamos antes de cobrar."
       : "<b>Envío por paquetería:</b> de 3 a 5 días hábiles a partir de que se confirma tu pago (por adelantado: tarjeta en línea o transferencia).";
@@ -1284,7 +1320,7 @@
   var DEMO = {
     link: { name: "Suplementos del Norte", tier_name: "Plata", tier_bps: 1000, general: false },
     catalog: {
-      store: "GGG · Nova Supps", whatsapp: "", minOrder: 0, stack: "acumular", allowBackorder: true,
+      store: "GGG · Nova Supps", whatsapp: "", minOrder: 0, cobertura_local: ["50000"], stack: "acumular", allowBackorder: true,
       volume: [{ min: 500000, bps: 300 }, { min: 1000100, bps: 850 }, { min: 1500100, bps: 1500 }],
       tipos: ["Creatinas", "Proteínas", "PWO", "Vitaminas", "Aminoácidos", "Ganadores", "Quemadores de Grasa"],
       products: [
