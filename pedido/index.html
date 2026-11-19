@@ -887,6 +887,14 @@
   if (!/^[a-z0-9]{16,64}$/.test(token)) return message("Enlace incompleto", "Abre el enlace completo que te mandamos por WhatsApp.");
   rpc("b2b_order_page_get", { p_token: token })
     .then(function (d) {
+      // 2.15.8 · Enlace en pausa: sin catálogo, con botón de WhatsApp.
+      if (d && d.paused) {
+        var pw = String(d.whatsapp || "").replace(/\D/g, "");
+        var pUrl = pw.length >= 10 ? "https://wa.me/" + (pw.length === 10 ? "52" + pw : pw) + "?text=" + encodeURIComponent("Hola, quiero hacer un pedido.") : "";
+        $("main").innerHTML = '<div class="card msg"><h2>Pedidos en línea en pausa</h2><p>Por ahora no estamos recibiendo pedidos en línea' + (d.store ? " en " + esc(d.store) : "") + ". Escríbenos por WhatsApp y con gusto te atendemos.</p>" +
+          (pUrl ? '<a class="cta full" style="display:block;margin-top:18px;text-decoration:none" href="' + esc(pUrl) + '" target="_blank" rel="noopener noreferrer">Escribir por WhatsApp</a>' : "") + "</div>";
+        return;
+      }
       if (!d || !d.catalog) return message("Este enlace ya no está activo", "Pídenos tu enlace actualizado por WhatsApp.");
       start(d);
     })
