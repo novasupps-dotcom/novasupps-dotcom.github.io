@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://yqosgsrqffiyrwpgqxag.supabase.co; connect-src https://yqosgsrqffiyrwpgqxag.supabase.co; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://yqosgsrqffiyrwpgqxag.supabase.co; connect-src https://yqosgsrqffiyrwpgqxag.supabase.co; font-src 'self' data:; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#F2F2F7">
 <title>Arma tu pedido · GGG Nova Supps</title>
 <style>
@@ -202,6 +202,39 @@
   // supabase/migrations/2.15.0_b2b_pedidos.sql).
   var SUPABASE = "https://yqosgsrqffiyrwpgqxag.supabase.co";
   var KEY = "sb_publishable_ZjMxBiCaO2YYrZxEX3xrdA_0zhjqJsl";
+  // 2.15.9 · Verificación anti-robots (Cloudflare Turnstile). Vacía = sin verificación.
+  var TURNSTILE_SITE_KEY = "";
+  var tsWidget = null;
+  function mountTurnstile() {
+    if (!TURNSTILE_SITE_KEY || demo || !$("termsAccept")) return;
+    var anchor = $("termsAccept").closest("label") || $("termsAccept");
+    if ($("ts")) return;
+    var box = document.createElement("div");
+    box.id = "ts"; box.style.cssText = "display:flex;justify-content:center;margin:12px 0";
+    anchor.parentNode.insertBefore(box, anchor.nextSibling);
+    var render = function () {
+      if (!$("ts")) return;
+      try { if (tsWidget !== null) window.turnstile.remove(tsWidget); } catch (e) {}
+      tsWidget = window.turnstile.render("#ts", { sitekey: TURNSTILE_SITE_KEY, language: "es", theme: "light" });
+    };
+    if (window.turnstile) return render();
+    window._tsReady = render;
+    if (!document.getElementById("ts-js")) {
+      var s = document.createElement("script");
+      s.id = "ts-js"; s.async = true; s.defer = true;
+      s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=_tsReady";
+      document.head.appendChild(s);
+    }
+  }
+  /** 2.15.9 · El pedido pasa por la función b2b-pedido (Turnstile y límite por conexión). */
+  function sendOrder(body) {
+    return fetch(SUPABASE + "/functions/v1/b2b-pedido", { method: "POST", headers: { apikey: KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(function (r) {
+        // Si la función aún no está publicada, se usa la ruta anterior.
+        if (r.status === 404) { var b = {}; Object.keys(body).forEach(function (k) { if (k !== "turnstile") b[k] = body[k]; }); return rpc("b2b_request_send", b); }
+        return r.json();
+      });
+  }
   var PAGE = 60;
   var params = new URLSearchParams(location.search);
   var token = (params.get("l") || "").trim();
@@ -673,6 +706,7 @@
       $("termsAccept").onchange = function () { window._termsAccepted = !!this.checked; renderReviewTotals(); if (window._termsAccepted && $("err")) $("err").innerHTML = ""; };
     }
     renderReviewTotals();
+    mountTurnstile();
   }
   function field(k, label, type, auto, mode, max) {
     return '<label for="c-' + k + '">' + label + '</label><input class="field" id="c-' + k + '" type="' + type + '" autocomplete="off"' + (mode ? ' inputmode="' + mode + '"' : "") + ' data-act="contact" data-k="' + k + '" maxlength="' + (max || 120) + '" value="' + esc(contact[k] || "") + '">';
@@ -713,6 +747,11 @@
     var addrErr = addressError(l.general);
     if (addrErr) return showErr(addrErr);
     if (!contact.pay) return showErr("Elige cómo vas a pagar.");
+    var tsAnswer = "";
+    if (TURNSTILE_SITE_KEY && !demo) {
+      try { tsAnswer = window.turnstile && tsWidget !== null ? window.turnstile.getResponse(tsWidget) || "" : ""; } catch (e) {}
+      if (!tsAnswer) return showErr("Confirma que no eres un robot (la casilla de verificación) y vuelve a enviar.");
+    }
     sending = true;
     $("send").disabled = true; $("send").textContent = "Enviando…";
     var remoteLines = t.lines.filter(function (x) { return x.p._remote; });
@@ -735,10 +774,12 @@
       p_contact: l.general ? contact : pick,
       p_notes: [notes, extraNote, "Forma de pago: " + payLabel, "Tiempo de entrega: " + deliveryText(t), paymentNote, "Zona de entrega: " + zoneLbl, "Subtotal: " + money(t.q.subtotal), "Descuento (" + discPct + "%): -" + money(discAmt), "Envío: " + t.q.shippingText, "Total final: " + money(t.q.total), dirTag].filter(Boolean).join(" | ")
     };
+    if (tsAnswer) body.turnstile = tsAnswer;
     var payOnline = contact.pay === "tarjeta_linea";
     var done = function (r) {
       sending = false;
       if (!r || !r.ok) {
+        try { if (window.turnstile && tsWidget !== null) window.turnstile.reset(tsWidget); } catch (e) {}
         $("send").textContent = "Enviar pedido"; renderReviewTotals();
         return showErr((r && r.message) || "No se pudo enviar. Revisa tu internet e inténtalo de nuevo.");
       }
@@ -749,7 +790,7 @@
       renderDone(r, t, payOnline);
     };
     if (demo) return setTimeout(function () { done({ ok: true, code: "D3M0A1" }); }, 600);
-    rpc("b2b_request_send", body).then(done).catch(function () { done(null); });
+    sendOrder(body).then(done).catch(function () { done(null); });
   }
   function renderDone(r, t, payOnline) {
     var wa = String(data.catalog.whatsapp || "").replace(/\D/g, "");
