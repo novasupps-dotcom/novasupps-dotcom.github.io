@@ -82,8 +82,9 @@
   .ck em { flex: 1; font-style: normal; }
   .ck small { color: var(--muted); font-size: 14.5px; font-weight: 600; }
   .fgo { width: 100%; border: 0; border-radius: 999px; background: var(--red); color: #fff; font-size: 17px; font-weight: 700; padding: 16px; margin-top: 10px; }
-  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
-  @media (min-width: 600px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  /* 2.18.3 · Tres por fila en el celular (tarjeta compacta); cuatro en pantallas anchas. */
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+  @media (min-width: 600px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; } }
   .p { background: var(--paper); border-radius: 24px; padding: 10px; display: flex; flex-direction: column; gap: 6px; position: relative; }
   .p.sel { box-shadow: inset 0 0 0 2px var(--green); }
   /* Foto cuadrada que siempre muestra el producto completo (alto o ancho), sin recortes. */
@@ -125,6 +126,26 @@
   .chip.on { background: var(--greenSoft); border-color: var(--green); color: var(--green); }
   .chip.extra { color: var(--muted); flex: none; }
   .stock { font-size: 12px; font-weight: 600; color: var(--amber); }
+  /* 2.18.3 · Tarjeta compacta (3 por fila) */
+  .grid .p { border-radius: 18px; padding: 7px; gap: 4px; }
+  .grid .ph { border-radius: 12px; }
+  .grid .brand { font-size: 9.5px; letter-spacing: .3px; margin-top: 4px !important; }
+  .grid .name { font-size: 12.5px; line-height: 1.22; min-height: 31px; }
+  .grid .meta, .grid .chips { display: none; }
+  .grid .price b { font-size: 14px; }
+  .grid .price s { font-size: 11px; }
+  .grid .add { height: 34px; border-radius: 10px; font-size: 13px; }
+  .grid .step { height: 34px; gap: 3px; }
+  .grid .step button { width: 30px; height: 34px; border-radius: 10px; font-size: 18px; }
+  .grid .step input { height: 34px; border-radius: 10px; font-size: 14px; padding: 0; }
+  .grid .pick { font-size: 12px; padding-top: 2px; }
+  .grid .p .ctl { margin-top: auto; }
+  .grid .fsum { font-size: 11px; }
+  .grid .stock, .grid .soon { font-size: 10.5px; line-height: 1.2; }
+  .grid .zoom { width: 22px; height: 22px; right: 4px; bottom: 4px; }
+  .grid .zoom svg { width: 12px; height: 12px; }
+  .soon { font-size: 12px; font-weight: 700; color: var(--green); }
+  .tag-new { position: absolute; top: 6px; left: 6px; z-index: 2; padding: 3px 7px; border-radius: 999px; background: var(--red); color: #fff; font-size: 9px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; pointer-events: none; }
   .empty { text-align: center; color: var(--muted); padding: 30px 10px; }
   .more { display: block; width: 100%; margin-top: 12px; border: 0; border-radius: 16px; background: var(--paper); padding: 14px; font-weight: 600; }
   /* Barra fija */
@@ -487,6 +508,15 @@
           '<button class="pick" type="button" data-act="open" data-id="' + esc(p.id) + '">' + (noteFor(p.id) ? "Cambiar sabores" : "Elegir sabores") + "</button>"
         : "");
   }
+  /**
+   * 2.18.3 · «Sobre pedido» solo si de verdad lo es: lo que Supabase marca «Disponible» llega en 1 a
+   * 5 días hábiles (no lleva etiqueta); con un enlace con existencias manda el inventario.
+   */
+  function onOrder(p) {
+    if (hasStock(p)) return false;
+    if (limited() && p.avail != null) return true;
+    return !/^disponible/i.test(String(p.disponibilidad || ""));
+  }
   function hasStock(p) {
     if (!p) return false;
     if (limited() && p.avail != null) return Number(p.avail) > 0;
@@ -513,14 +543,14 @@
     var meta = [servingsText(p), chips || !Array.isArray(p.sabores) ? "" : fls[0] || "", !Array.isArray(p.sabores) && p.flavors && !/^(único|unico)$/i.test(p.flavors) ? p.flavors : ""].filter(Boolean).join(" · ");
     return '<div class="p' + (cart[p.id] ? " sel" : "") + '" id="p-' + esc(p.id) + '">' +
       '<div class="open" data-act="open" data-id="' + esc(p.id) + '" role="button" aria-label="Ver ' + esc(p.name) + '">' +
-      '<div class="ph">' + (inStock ? '<span class="ribbon">Entrega Inmediata</span>' : "") + photo(p) + (imgUrl(p) ? '<span class="zoom">' + ICON_ZOOM + "</span>" : "") + "</div>" +
+      '<div class="ph">' + (p.nuevo ? '<span class="tag-new">Nuevo</span>' : "") + photo(p) + (imgUrl(p) ? '<span class="zoom">' + ICON_ZOOM + "</span>" : "") + "</div>" +
       '<div class="brand" style="margin-top:6px">' + esc(p.brand) + "</div>" +
       '<div class="name">' + esc(p.name) + "</div></div>" +
       (meta ? '<div class="meta">' + esc(meta) + "</div>" : "") +
       (chips ? flavorChips(p, fls) : "") +
       '<div class="price"><b>' + money(yourPrice(p)) + "</b>" + (off ? "<s>" + money(p.price) + "</s>" : "") + "</div>" +
       (limited() && p.avail != null && p.avail > 0 && p.avail < 10 ? '<div class="stock">Quedan ' + p.avail + "</div>" : "") +
-      (!inStock ? '<div class="stock">Sobre pedido</div>' : "") +
+      (inStock ? '<div class="soon">Entrega inmediata</div>' : onOrder(p) ? '<div class="stock">Sobre pedido</div>' : "") +
       '<div class="ctl">' + controls(p) + "</div></div>";
   }
   var SEGMENT_RULES = [
@@ -544,6 +574,14 @@
   var tipoOf = function (p) { return (p && p._tipo) || classifyTipo(p); };
   var marcaOf = function (p) { return p.marca || p.brand || "Sin marca"; };
   var bandOf = function (p) { var v = yourPrice(p); for (var i = 0; i < PRICES.length; i++) if (v >= PRICES[i][2] && v < PRICES[i][3]) return PRICES[i][0]; return ""; };
+  /**
+   * 2.18.3 · Orden de la página: destacados (1, 2, 3…), entrega inmediata, nuevos, lo más pedido y
+   * luego el orden del catálogo (sort estable).
+   */
+  function byRank(a, b) {
+    var da = Number(a.destacado) > 0 ? Number(a.destacado) : 1e9, db = Number(b.destacado) > 0 ? Number(b.destacado) : 1e9;
+    return da - db || Number(hasStock(b)) - Number(hasStock(a)) || Number(!!b.nuevo) - Number(!!a.nuevo) || (Number(b.pedidos) || 0) - (Number(a.pedidos) || 0);
+  }
   /** Productos que pasan la búsqueda y los filtros (sin `skip`, para contar opciones). */
   function filtered(skip) {
     var q = fold(query).split(/\s+/).filter(Boolean);
@@ -555,7 +593,7 @@
       if (!q.length) return true;
       var hay = fold(p.name + " " + p.brand + " " + p.segment + " " + p.category + " " + tipoOf(p) + " " + p.flavors);
       return q.every(function (w) { return hay.indexOf(w) >= 0; });
-    }).sort(function (a, b) { return Number(hasStock(b)) - Number(hasStock(a)); });
+    }).sort(byRank);
     if (fl.sort) out = out.slice().sort(function (a, b) { return fl.sort === "asc" ? a.price - b.price : b.price - a.price; });
     return out;
   }
@@ -892,7 +930,7 @@
       '<div class="price" style="margin-top:10px"><b>' + money(yourPrice(p)) + "</b>" + (off ? "<s>" + money(p.price) + "</s>" : "") + "</div>" +
       (off ? '<span class="badge">Nivel ' + esc(link().tier_name) + " · " + bpsLabel(tierBps()) + " aplicado</span>" : "") +
       (limited() && p.avail != null ? '<div class="stock" style="margin-top:8px">' + (max > 0 ? "Disponibles: " + max : "Agotado") + "</div>" : "") +
-      (!inStock ? '<div class="stock" style="margin-top:8px">Sobre pedido</div>' : "") +
+      (inStock ? "" : onOrder(p) ? '<div class="stock" style="margin-top:8px">Sobre pedido</div>' : '<div class="meta" style="margin-top:8px;white-space:normal">Entrega en 1 a 5 días hábiles, según disponibilidad</div>') +
       "</div>";
     if (list.length > 1) {
       html += '<div class="card" id="flv-card"><p class="sec" style="margin-top:0">ELIGE SABORES *</p>' + list.map(function (f, i) {
@@ -1338,7 +1376,8 @@
     var matchedB2C = {};
     products.forEach(function (p) {
       p._remote = true;
-      p.in_stock = false;
+      // 2.18.3 · «Entrega inmediata» la marca el dueño en Supabase (b2b_cat_productos.entrega_inmediata).
+      p.in_stock = fromSupabase ? p.in_stock === true : false;
       p.price = Number(p.price) || 0;
        
        
