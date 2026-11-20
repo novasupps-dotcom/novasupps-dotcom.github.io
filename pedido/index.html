@@ -8,6 +8,21 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://yqosgsrqffiyrwpgqxag.supabase.co; connect-src https://yqosgsrqffiyrwpgqxag.supabase.co; font-src 'self' data:; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#F2F2F7">
 <title>Arma tu pedido · GGG Nova Supps</title>
+<meta name="description" content="Suplementos originales con entrega local y envíos a todo México. Arma tu pedido en línea y te lo confirmamos por WhatsApp.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_MX">
+<meta property="og:site_name" content="GGG · Nova Supps">
+<meta property="og:title" content="Arma tu pedido en línea · GGG Nova Supps">
+<meta property="og:description" content="Suplementos originales · entrega local y envíos a todo México. Te confirmamos tu pedido por WhatsApp.">
+<meta property="og:url" content="https://novasupps-dotcom.github.io/pedido/">
+<meta property="og:image" content="https://novasupps-dotcom.github.io/pedido/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="GGG Nova Supps · Arma tu pedido en línea">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Arma tu pedido en línea · GGG Nova Supps">
+<meta name="twitter:description" content="Suplementos originales · entrega local y envíos a todo México.">
+<meta name="twitter:image" content="https://novasupps-dotcom.github.io/pedido/og.png">
 <style>
   :root {
     --bg: #F2F2F7; --paper: #fff; --ink: #1C1C1E; --muted: #6C6C70; --faint: #AEAEB2; --line: #E3E3E8;
@@ -250,6 +265,7 @@
   .terms ol { margin: 0; padding-left: 20px; font-size: 13.5px; line-height: 1.5; color: var(--ink); }
   .terms li { margin-bottom: 8px; }
   .terms li:last-child { margin-bottom: 0; }
+  .terms a { color: inherit; }
   .done { text-align: center; padding: 26px 10px 10px; }
   .done .ok { width: 72px; height: 72px; border-radius: 50%; background: var(--greenSoft); display: grid; place-items: center; margin: 0 auto 14px; }
   .done .ok svg { width: 38px; height: 38px; stroke: var(--green); fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -265,6 +281,8 @@
   .demo b { display: block; font-size: 15px; }
   .demo span { font-size: 13px; color: #C7C7CC; }
   .foot { text-align: center; color: var(--faint); font-size: 12px; margin-top: 18px; }
+  .foot a { color: var(--muted); }
+  .foot.legal { margin-top: 6px; line-height: 1.4; padding: 0 12px; }
   /* 2.17.3 · Aviso (estilo notificación iOS / One UI) y candado de sabores */
   .toast { position: fixed; left: 50%; top: calc(12px + env(safe-area-inset-top)); z-index: 60; width: max-content; max-width: min(calc(100vw - 32px), 420px); padding: 13px 18px; border-radius: 18px; background: rgba(28, 28, 30, .94); color: #fff; font-size: 15.5px; font-weight: 600; text-align: center; box-shadow: 0 10px 30px rgba(0, 0, 0, .22); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); transform: translate(-50%, -140%); opacity: 0; transition: transform .28s cubic-bezier(.2, .9, .3, 1.2), opacity .2s; pointer-events: none; }
   .toast.on { transform: translate(-50%, 0); opacity: 1; }
@@ -286,7 +304,8 @@
   <main id="main">
     <div class="card"><div class="skel" style="width:40%"></div><div class="skel" style="width:70%;height:22px"></div><div class="skel"></div><div class="skel" style="width:85%"></div></div>
   </main>
-  <p class="foot">GGG · Nova Supps · Pedidos para distribuidores</p>
+  <p class="foot">GGG · Nova Supps · Pedidos en línea · <a href="privacidad.html" target="_blank" rel="noopener">Aviso de privacidad</a></p>
+  <p class="foot legal">Los suplementos alimenticios no son medicamentos. El consumo de este producto es responsabilidad de quien lo recomienda y de quien lo usa.</p>
 </div>
 <div class="bar" id="bar"><div class="in"><div class="sum"><b id="bartotal">$0.00</b><span id="barinfo">0 piezas</span></div><button class="cta" id="review" type="button">Revisar pedido</button></div></div>
 <div class="sheet" id="sheet"><div class="wrap" id="sheetin"></div></div>
@@ -646,7 +665,7 @@
     var l = link(), c = data.catalog;
     var hello = l.general ? "Arma tu pedido" : "Hola, " + esc(l.name);
     var sub = l.general
-      ? "Elige productos y cantidades del catálogo de distribuidores. Te confirmamos tu orden de compra por WhatsApp."
+      ? "Elige productos y cantidades. Te confirmamos tu pedido por WhatsApp el mismo día hábil (después de las 18:00 h o en fin de semana, el siguiente día hábil)."
       : "Elige productos y cantidades. Te confirmamos tu orden de compra con su folio y el enlace para seguirla.";
     $("main").innerHTML =
       (demo ? '<div class="card demo"><div><b>Demostración</b><span>Así ve tu distribuidor el catálogo para pedir</span></div></div>' : "") +
@@ -1108,7 +1127,7 @@
     html += '<div class="card"><label for="notes" style="margin-top:0">Comentarios (opcional)</label><textarea class="field" id="notes" data-act="notes" maxlength="600" placeholder="Ej. entregar por la tarde, factura, etc.">' + esc(notes) + "</textarea></div>" +
       '<div class="card summary"><p class="sec" style="margin-top:0">RESUMEN DE PAGO</p><div id="totals"></div></div>' +
       '<div class="card terms"><p class="sec" style="margin-top:0">TÉRMINOS Y CONDICIONES</p>' + termsHtml() + "</div>" +
-      '<label style="display:flex;align-items:center;gap:10px;margin:14px 0 12px;cursor:pointer;font-size:14px;font-weight:700;color:var(--ink)"><input type="checkbox" id="termsAccept" required style="width:18px;height:18px;accent-color:var(--ink);cursor:pointer;flex:0 0 auto"><span>Acepto Términos y Condiciones</span></label><div id="err"></div><button class="cta full" type="button" id="send">Enviar pedido</button>' +
+      '<label style="display:flex;align-items:center;gap:10px;margin:14px 0 12px;cursor:pointer;font-size:14px;font-weight:700;color:var(--ink)"><input type="checkbox" id="termsAccept" required style="width:18px;height:18px;accent-color:var(--ink);cursor:pointer;flex:0 0 auto"><span>Acepto los Términos y Condiciones y el <a href="privacidad.html" target="_blank" rel="noopener" style="color:inherit">Aviso de privacidad</a></span></label><div id="err"></div><button class="cta full" type="button" id="send">Enviar pedido</button>' +
       '<p style="text-align:center;color:var(--muted);font-size:13px;margin-top:10px">Los precios se confirman en tu orden de compra.</p>';
     $("sheetin").innerHTML = html;
     $("back").onclick = back;
@@ -1182,7 +1201,7 @@
     var wa = String((data.catalog && data.catalog.whatsapp) || "5613388882").replace(/\D/g, "");
     var li = function (t, d) { return "<li><b>" + t + "</b> " + d + "</li>"; };
     return "<ol>" +
-      li("Precios y existencias.", "Precios en pesos mexicanos. Tu pedido es una solicitud: confirmamos existencia, precio final y total a pagar en tu orden de compra por WhatsApp (" + esc(wa) + ") antes de cualquier cobro.") +
+      li("Precios y existencias.", "Precios en pesos mexicanos. Tu pedido es una solicitud: confirmamos existencia, precio final y total a pagar en tu orden de compra por WhatsApp (" + esc(wa) + ") antes de cualquier cobro. Respondemos el mismo día hábil; los pedidos que llegan después de las 18:00 h o en fin de semana se confirman el siguiente día hábil.") +
       li("Tiempo de entrega.", "De 1 a 5 días hábiles según la disponibilidad de cada producto en almacén. Son días hábiles de lunes a viernes, sin días festivos; los pedidos confirmados después de las 18:00 h o en fin de semana cuentan desde el siguiente día hábil. Si un producto es sobre pedido y tarda más, te avisamos antes de surtir.") +
       li("Envío local (" + pesos(envioLocal()) + ").", "Entrega en menos de 72 horas hábiles, conforme a la disponibilidad del producto en almacén, en uno de estos lugares: " + lugares().join(", ") + ". Te confirmamos día y hora por WhatsApp.") +
       li("Envío por paquetería (" + pesos(envioForaneo()) + ").", "A todo México, de 3 a 5 días hábiles a partir de que se confirma tu pago. El tiempo de la paquetería puede variar en zonas extendidas.") +
@@ -1191,6 +1210,8 @@
       li("Pago.", "Con envío por paquetería, incluido el envío gratis por paquetería, el pago es por adelantado (tarjeta en línea con Mercado Pago o transferencia) y el pedido se surte al confirmarse. Con envío local también puedes pagar en efectivo o con tarjeta al recibir.") +
       li("Recepción, cambios y devoluciones.", "Revisa tu pedido al recibirlo. Faltantes, productos dañados o equivocados se reportan por WhatsApp dentro de las 48 horas siguientes, con foto; se cambian sin costo. No aceptamos devoluciones de productos abiertos o sin sello.") +
       li("Facturación.", "Si necesitas factura, indícalo en Comentarios con tus datos fiscales; se emite con la fecha del pago.") +
+      li("Suplementos alimenticios.", "Los suplementos alimenticios no son medicamentos. El consumo de este producto es responsabilidad de quien lo recomienda y de quien lo usa. Vendemos productos originales, sellados y con su etiqueta de fábrica.") +
+      li("Datos personales.", 'Usamos tus datos solo para atender y entregar tu pedido. Consulta el <a href="privacidad.html" target="_blank" rel="noopener">Aviso de privacidad</a>.') +
       "</ol>";
   }
   var STATES = ["Aguascalientes", "Baja California", "Baja California Sur", "Campeche", "Chiapas", "Chihuahua", "Ciudad de México", "Coahuila", "Colima", "Durango", "Estado de México", "Guanajuato", "Guerrero", "Hidalgo", "Jalisco", "Michoacán", "Morelos", "Nayarit", "Nuevo León", "Oaxaca", "Puebla", "Querétaro", "Quintana Roo", "San Luis Potosí", "Sinaloa", "Sonora", "Tabasco", "Tamaulipas", "Tlaxcala", "Veracruz", "Yucatán", "Zacatecas"];
