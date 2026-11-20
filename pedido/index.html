@@ -425,7 +425,7 @@
   }
   var ZONES = {
     paqueteria: { title: "Envío por paquetería", sub: "3 a 5 días hábiles · a todo México", cost: envioForaneo },
-    local: { title: "Envío local", sub: "Menos de 72 horas hábiles · según disponibilidad en almacén · en el lugar que elijas", cost: envioLocal }
+    local: { title: "Envío local", sub: "Menos de 72 horas hábiles · entrega sujeta a disponibilidad · en el lugar que elijas", cost: envioLocal }
   };
   /** Mismo cálculo que la app (descuento por nivel y luego por volumen, o solo el mayor). */
   function quote(subtotal) {
@@ -1013,7 +1013,7 @@
     if (zb) zb.innerHTML = q.freeShipping
       ? '<div class="pay ship on free"><span>Tu envío es gratis<small>Tu pedido es de ' + pesos(envioGratis()) + " o más. Elige cómo lo recibes:</small></span><b class=\"zp\">Gratis</b></div>" +
         '<div class="opts freemode" role="radiogroup" aria-label="Cómo recibes tu pedido">' +
-        [["paqueteria", "Por paquetería a tu domicilio", "3 a 5 días hábiles · pago por adelantado"], ["local", "Envío local", "Menos de 72 horas hábiles · en el lugar que elijas"]].map(function (o) {
+        [["paqueteria", "Por paquetería a tu domicilio", "3 a 5 días hábiles · pago por adelantado"], ["local", "Envío local", "Menos de 72 horas hábiles · entrega sujeta a disponibilidad · en el lugar que elijas"]].map(function (o) {
           var on = contact.freeMode === o[0];
           return '<label class="opt' + (on ? " on" : "") + '"><input type="radio" name="freemode" data-act="freemode" value="' + o[0] + '"' + (on ? " checked" : "") + "><span>" + o[1] + "<small>" + o[2] + "</small></span></label>";
         }).join("") + "</div>" + (contact.freeMode === "local" ? lugaresHtml() : "")
@@ -1036,7 +1036,7 @@
   /** 2.17.6 · Entrega estimada según el envío elegido. */
   function deliveryEta(q) {
     var m = deliveryMode(q);
-    return m === "local" ? "Menos de 72 horas hábiles" : m === "paqueteria" ? "3 a 5 días hábiles después de confirmar tu pago" : DELIVERY;
+    return m === "local" ? "Menos de 72 horas hábiles · entrega sujeta a disponibilidad" : m === "paqueteria" ? "3 a 5 días hábiles después de confirmar tu pago" : DELIVERY;
   }
   /**
    * 2.17.6 · Barra de beneficios: las metas de descuento por volumen y el envío gratis en una sola
@@ -1203,7 +1203,7 @@
     return "<ol>" +
       li("Precios y existencias.", "Precios en pesos mexicanos. Tu pedido es una solicitud: confirmamos existencia, precio final y total a pagar en tu orden de compra por WhatsApp (" + esc(wa) + ") antes de cualquier cobro. Respondemos el mismo día hábil; los pedidos que llegan después de las 18:00 h o en fin de semana se confirman el siguiente día hábil.") +
       li("Tiempo de entrega.", "De 1 a 5 días hábiles según la disponibilidad de cada producto en almacén. Son días hábiles de lunes a viernes, sin días festivos; los pedidos confirmados después de las 18:00 h o en fin de semana cuentan desde el siguiente día hábil. Si un producto es sobre pedido y tarda más, te avisamos antes de surtir.") +
-      li("Envío local (" + pesos(envioLocal()) + ").", "Entrega en menos de 72 horas hábiles, conforme a la disponibilidad del producto en almacén, en uno de estos lugares: " + lugares().join(", ") + ". Te confirmamos día y hora por WhatsApp.") +
+      li("Envío local (" + pesos(envioLocal()) + ").", "Entrega en menos de 72 horas hábiles, sujeta a disponibilidad del producto en almacén, en uno de estos lugares: " + lugares().join(", ") + ". Te confirmamos día y hora por WhatsApp.") +
       li("Envío por paquetería (" + pesos(envioForaneo()) + ").", "A todo México, de 3 a 5 días hábiles a partir de que se confirma tu pago. El tiempo de la paquetería puede variar en zonas extendidas.") +
       li("Envío sin costo.", "En pedidos con subtotal de productos desde " + pesos(envioGratis()) + ", local o por paquetería. Gimnasios con pedidos desde $15,000: entrega directa en sus instalaciones dentro de la cobertura local.") +
       li("Descuentos por volumen.", "Sobre el subtotal de productos: 3 % desde $5,000, 8.5 % desde $10,001 y 15 % desde $15,001. No se acumulan con otras promociones. Cada producto tiene un precio mínimo: si un descuento lo rebasa, se ajusta y lo verás en tu resumen. El envío no tiene descuento.") +
@@ -1314,7 +1314,7 @@
     var row = function (a, b, cls) { return '<div class="row' + (cls ? " " + cls : "") + '"><span>' + a + "</span><b>" + b + "</b></div>"; };
     var mode = deliveryMode(q);
     var shipNote = mode === "local"
-      ? "<b>" + (q.freeShipping ? "Envío local gratis" : "Envío local") + ":</b> en <b>" + esc(contact.lugar || "el lugar elegido") + "</b>, en menos de 72 horas hábiles, conforme a la disponibilidad del producto en almacén. Te confirmamos día y hora por WhatsApp."
+      ? "<b>" + (q.freeShipping ? "Envío local gratis" : "Envío local") + ":</b> en <b>" + esc(contact.lugar || "el lugar elegido") + "</b>, en menos de 72 horas hábiles, entrega sujeta a disponibilidad del producto en almacén. Te confirmamos día y hora por WhatsApp."
       : "<b>" + (q.freeShipping ? "Envío gratis por paquetería" : "Envío por paquetería") + ":</b> de 3 a 5 días hábiles a partir de que se confirma tu pago (por adelantado: tarjeta en línea o transferencia).";
     box.innerHTML = '<div class="dim" data-cf="no"></div><div class="panel" role="dialog" aria-modal="true" aria-labelledby="cf-t"><div class="handle"></div>' +
       '<div class="head"><b id="cf-t">Confirma tu pedido</b><button class="xbtn" type="button" data-cf="no" aria-label="Cerrar">' + ICON_X + "</button></div>" +
