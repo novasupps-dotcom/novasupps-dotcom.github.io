@@ -107,6 +107,10 @@
   .flv { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
   .flv:last-child { border-bottom: 0; }
   .flv span { flex: 1; font-size: 15.5px; font-weight: 600; }
+  /* 2.18.5 · Sabor en mano / sobre pedido */
+  .fi, .fs { display: block; font-size: 12px; font-weight: 700; margin-top: 2px; }
+  .fi { color: var(--green); }
+  .fs { color: var(--muted); font-weight: 600; }
   .flv .step { width: 132px; flex: none; }
   .brand { font-size: 11.5px; font-weight: 700; letter-spacing: .5px; color: var(--muted); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .name { font-size: 14.5px; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 36px; }
@@ -448,13 +452,30 @@
   var maxOf = function (p) { return limited() && p.avail != null ? Math.max(0, Number(p.avail)) : 9999; };
   /** Sabores del producto («Varios (3): Chocolate, Vainilla, Fresa…» → 3 sabores; «…» = hay más). */
   var NO_FLAVOR = /^\s*(n\/a|na|sin sabor|único|unico|-)?\s*(\(sin sabor\))?\s*$/i;
+  /**
+   * 2.18.5 · Sabores que el dueño tiene en mano (b2b_cat_sabores.entrega_inmediata). null = no aplica
+   * (el producto no es de entrega inmediata, o lo es pero no marcó sabores: entonces son todos).
+   */
+  function inHand(p) {
+    if (!hasStock(p) || !Array.isArray(p.sabores_inmediata) || !p.sabores_inmediata.length) return null;
+    var set = {};
+    p.sabores_inmediata.forEach(function (f) { set[fold(String(f || "").trim())] = 1; });
+    return set;
+  }
+  function flavorTag(p, f) {
+    var set = inHand(p);
+    if (!set) return "";
+    return set[fold(f)] ? '<small class="fi">Entrega inmediata</small>' : '<small class="fs">1 a 5 días hábiles</small>';
+  }
   function flavorList(p) {
     // 2.17 · Catálogo nuevo: la lista de sabores disponibles viene aparte (b2b_cat_sabores).
     if (p && Array.isArray(p.sabores)) {
-      var s1 = {};
-      return p.sabores.map(function (f) { return String(f || "").trim(); }).filter(function (f) {
+      var s1 = {}, set = inHand(p);
+      var out = p.sabores.map(function (f) { return String(f || "").trim(); }).filter(function (f) {
         var k = fold(f); if (!f || NO_FLAVOR.test(f) || s1[k]) return false; s1[k] = 1; return true;
       }).slice(0, 40);
+      // Los que tiene en mano, primero (sort estable).
+      return set ? out.sort(function (a, b) { return Number(!!set[fold(b)]) - Number(!!set[fold(a)]); }) : out;
     }
     var raw = String(p.flavors || "");
     var t = raw.replace(/^\s*varios\s*(\(\d+\))?\s*:?\s*/i, "");
@@ -935,7 +956,7 @@
     if (list.length > 1) {
       html += '<div class="card" id="flv-card"><p class="sec" style="margin-top:0">ELIGE SABORES *</p>' + list.map(function (f, i) {
         var q = fq[f] || 0;
-        return '<div class="flv"><span>' + esc(f) + '</span><div class="step"><button type="button" data-act="fminus" data-id="' + esc(p.id) + '" data-f="' + i + '" aria-label="Quitar ' + esc(f) + '">−</button>' +
+        return '<div class="flv"><span>' + esc(f) + flavorTag(p, f) + '</span><div class="step"><button type="button" data-act="fminus" data-id="' + esc(p.id) + '" data-f="' + i + '" aria-label="Quitar ' + esc(f) + '">−</button>' +
           '<input readonly value="' + q + '" aria-label="Piezas de ' + esc(f) + '"><button class="plus" type="button" data-act="fplus" data-id="' + esc(p.id) + '" data-f="' + i + '" aria-label="Agregar ' + esc(f) + '">+</button></div></div>';
       }).join("") +
         (moreFlavors(p) ? '<div class="note warn">Puede haber más sabores: escríbelo abajo.</div>' : "") +
@@ -943,7 +964,7 @@
         '<label for="fnote">Comentario (opcional)</label><input class="field" id="fnote" data-act="flavor" data-id="' + esc(p.id) + '" maxlength="120" value="' + esc(flavors[p.id] || "") + '" placeholder="Ej. para entregar juntas">' +
         "</div>";
     } else {
-      html += '<div class="card">' + (list.length === 1 || (p.flavors && !Array.isArray(p.sabores)) ? '<div class="row" style="padding-top:0"><span>Sabor</span><b>' + esc(list[0] || p.flavors) + "</b></div>" : "") +
+      html += '<div class="card">' + (list.length === 1 || (p.flavors && !Array.isArray(p.sabores)) ? '<div class="row" style="padding-top:0"><span>Sabor</span><b>' + esc(list[0] || p.flavors) + (list[0] ? flavorTag(p, list[0]) : "") + "</b></div>" : "") +
         (moreFlavors(p) ? '<label for="fnote">Sabor que prefieres (opcional)</label><input class="field" id="fnote" data-act="flavor" data-id="' + esc(p.id) + '" maxlength="120" value="' + esc(flavors[p.id] || "") + '">' : "") +
         '<p class="sec" style="margin:12px 0 8px">CANTIDAD</p>' + (max > 0 || n ? '<div class="step"><button type="button" data-act="minus" data-id="' + esc(p.id) + '" aria-label="Quitar uno de ' + esc(p.name) + '">−</button>' +
           '<input inputmode="numeric" data-act="qty" data-id="' + esc(p.id) + '" value="' + n + '" aria-label="Cantidad de ' + esc(p.name) + '"><button class="plus" type="button" data-act="plus" data-id="' + esc(p.id) + '" aria-label="Agregar uno de ' + esc(p.name) + '">+</button></div>' : '<button class="add" type="button" disabled>Agotado</button>') + "</div>";
