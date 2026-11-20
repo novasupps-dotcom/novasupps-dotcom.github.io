@@ -310,7 +310,7 @@
     var banner = st === "cancelado" ? '<div class="banner bad">Cancelado' + (d.cancelReason ? ": " + esc(d.cancelReason) : "") + "</div>"
       : st === "entregado" ? '<div class="banner ok">Pedido entregado ✓</div>' : "";
     top.innerHTML =
-      '<div class="card hero' + (firstPaint ? " anim" : "") + (dead ? " dead" : "") + '"><div class="folio">ORDEN ' + esc(d.folio) + "</div><h1>" + esc(headline) + "</h1><p>" + esc(d.distributor) + (sub ? " · " + esc(sub) : "") + "</p>" +
+      '<div class="card hero' + (firstPaint ? " anim" : "") + (dead ? " dead" : "") + '"><div class="folio">' + (d.code && d.code !== d.folio ? "PEDIDO No. " + esc(d.code) : "ORDEN " + esc(d.folio)) + "</div><h1>" + esc(headline) + "</h1><p>" + esc(d.distributor) + (sub ? " · " + esc(sub) : "") + "</p>" +
       '<span class="pill">' + esc(d.statusLabel) + "</span>" +
       '<div class="track"><div class="lane"><div class="rail"></div><div class="fill" id="fill"></div><div class="truck" id="truck"><span>' + svg(ICONS.en_camino) + "</span></div></div>" +
       '<div class="nodes">' + nodes + '</div></div><div class="labels">' + labels + "</div>" + banner +
@@ -328,7 +328,7 @@
       return "<li>" + ph + "<span>" + esc(l.name) + "</span><b>× " + esc(l.qty) + "</b></li>";
     }).join("");
     var wa = d.whatsapp ? '<a class="wa" href="https://wa.me/52' + esc(String(d.whatsapp).replace(/\D/g, "").slice(-10)) + "?text=" +
-      encodeURIComponent("Hola, tengo una pregunta sobre mi pedido " + d.folio) + '" target="_blank" rel="noopener">' +
+      encodeURIComponent("Hola, tengo una pregunta sobre mi pedido " + (d.code || d.folio)) + '" target="_blank" rel="noopener">' +
       '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>Escríbenos por WhatsApp</a>' : "";
     rest.innerHTML = (PAY_MSG && d.balance > 0 && !dead ? '<div class="paymsg ' + PAY_MSG[0] + '">' + esc(PAY_MSG[1]) + "</div>" : "") + ship +
       '<div class="card"><p class="sec">RESUMEN</p>' +
