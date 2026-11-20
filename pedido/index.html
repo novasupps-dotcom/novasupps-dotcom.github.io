@@ -167,6 +167,19 @@
   .tag-new { position: absolute; top: 6px; left: 6px; z-index: 2; padding: 3px 7px; border-radius: 999px; background: var(--red); color: #fff; font-size: 9px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; pointer-events: none; }
   .empty { text-align: center; color: var(--muted); padding: 30px 10px; }
   .more { display: block; width: 100%; margin-top: 12px; border: 0; border-radius: 16px; background: var(--paper); padding: 14px; font-weight: 600; }
+  /* 2.18.11 · Ordenar, productos por página, encabezados por categoría y páginas */
+  .tools { display: flex; gap: 8px; margin-top: 10px; }
+  .tools label { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 10px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+  .tools label.n { flex: 0 0 auto; }
+  .tools select { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 14px; font-weight: 700; color: var(--ink); padding: 0; }
+  .tools select:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 4px; }
+  .cath { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 16px 4px 0; font-size: 19px; font-weight: 800; letter-spacing: -.3px; }
+  .cath:first-child { margin-top: 0; }
+  .cath span { min-width: 30px; height: 24px; border-radius: 12px; background: #E9E9EE; color: var(--muted); font-size: 12.5px; font-weight: 700; display: grid; place-items: center; padding: 0 8px; flex: none; }
+  .pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; }
+  .pager button { flex: 0 0 auto; border: 0; border-radius: 14px; background: var(--paper); padding: 12px 14px; font-weight: 700; font-size: 14px; color: var(--ink); }
+  .pager button:disabled { color: var(--faint); }
+  .pager span { flex: 1; text-align: center; font-size: 13px; color: var(--muted); }
   /* Barra fija */
   .bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: rgba(242,242,247,.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); transform: translateY(110%); transition: transform .25s; z-index: 5; }
   .bar.on { transform: none; }
@@ -353,14 +366,16 @@
         return r.json();
       });
   }
-  var PAGE = 60;
   var params = new URLSearchParams(location.search);
   var token = (params.get("l") || "").trim();
   var demo = params.get("demo");
   var data = null, products = [], byId = {};
   var cart = {}, flavors = {}, flavorQty = {}, contact = {}, notes = "";
   var detailId = "";
-  var query = "", shown = PAGE, sending = false;
+  var query = "", sending = false;
+  // 2.18.11 · Página actual y productos por página (10, 50 o 100; se recuerda en este navegador).
+  var page = 1, PER_OPTIONS = [10, 50, 100], perPage = 50;
+  try { var savedPer = Number(localStorage.getItem("nova-pedido-por-pagina")); if (PER_OPTIONS.indexOf(savedPer) >= 0) perPage = savedPer; } catch (e) {}
   // 2.15.3 · Filtro igual al de Vender: rápidos (existencia, precio), tipo de suplemento, marca y precio.
   var fl = { tipos: [], marcas: [], precios: [], avail: false, sort: "" }, acc = { tipo: true, marca: false, precio: false };
   var PRICES = [["p1", "Hasta $500", 0, 50000], ["p2", "$500 – $900", 50000, 90000], ["p3", "Más de $900", 90000, Infinity]];
@@ -595,19 +610,22 @@
   }
   var SEGMENT_RULES = [
     ["Accesorios", /shaker|mezclador|cinturon|strap|guante|playera|ropa|accesorio|mochila|pastillero|termos?/],
-    ["Snacks", /barra|\bbar\b|snack|galleta|cafe|coffee|bebida|\bdrink\b|\blata\b|c4\s*energy|cookie|brownie|pancake|waffle|avena|cacahuate|peanut|comida|alimento|sandwich/],
-    ["Ganadores", /ganador|gainer|\bmass\b|hipercalor|serious\s*mass|super\s*mass|carnivor\s*mass|mass\s*tech|king\s*mass|mutant\s*mass|mass\s*extreme/],
-    ["Quemadores de Grasa", /quemador|termogen|thermogen|carnitin|carnigen|\bcla\b|lipo\s*6|lipodrene|hydroxycut|fat\s*burner|perdida\s*de\s*peso|control\s*de\s*peso|diuret/],
-    ["Vitaminas", /vitamin|omega|multivit|mineral|colageno|collagen|biotin|melatonin|probiot|enzim|digest|antioxid|articular|glucosamin|condroitin|\bmsm\b|hialuron|magnesi|\bzinc\b|\bzma\b|ashwagandha|salud|inmune|bienestar|salmon\s*oil|fish\s*oil|krill|\bd3\b|glutathione/],
+    ["Snacks y bebidas", /barra|\bbar\b|snack|galleta|cafe|coffee|bebida|\bdrink\b|\blata\b|c4\s*energy\s*zero|cookie|brownie|pancake|waffle|avena|cacahuate|peanut|comida|alimento|sandwich/],
+    ["Ganadores de peso", /ganador|gainer|\bmass\b|hipercalor|serious\s*mass|super\s*mass|carnivor\s*mass|mass\s*tech|king\s*mass|mutant\s*mass|mass\s*extreme/],
+    ["Quemadores de grasa", /quemador|termogen|thermogen|carnitin|carnigen|\bcla\b|lipo\s*6|lipodrene|hydroxycut|fat\s*burner|perdida\s*de\s*peso|control\s*de\s*peso|diuret/],
+    ["Vitaminas y salud", /vitamin|omega|multivit|mineral|colageno|collagen|biotin|melatonin|probiot|enzim|digest|antioxid|articular|glucosamin|condroitin|\bmsm\b|hialuron|magnesi|\bzinc\b|\bzma\b|ashwagandha|salud|inmune|bienestar|salmon\s*oil|fish\s*oil|krill|\bd3\b|glutathione/],
     ["Creatinas", /creatin|creapure|monohidrat|monohydrat/],
-    ["PWO", /pre.?entreno|pre.?entrenamiento|pre.?workout|\bpwo\b|pre.?train|oxido\s*nitrico|nitric\s*oxide|\bpump\b|venom|psychotic|nitraflex|cbum|\bjoker\b|nitro\s*test/],
+    ["Pre-entrenos", /pre.?entreno|pre.?entrenamiento|pre.?workout|\bpwo\b|pre.?train|oxido\s*nitrico|nitric\s*oxide|\bpump\b|venom|psychotic|nitraflex|cbum|\bjoker\b|nitro\s*test/],
     ["Soporte hormonal", /hormonal|testo|testrol|tribulus|precursor|anabol|\bmaca\b|\bdhea\b|alpha/],
-    ["Aminoácidos", /amino|bcaa|\beaa\b|glutamin|arginin|citrulin|beta.?alanin|taurin|leucin|recupera|intra.?entreno|intra.?workout|hidratacion|electrolit/],
+    ["Aminoácidos y recuperación", /amino|bcaa|\beaa\b|glutamin|arginin|citrulin|beta.?alanin|taurin|leucin|recupera|intra.?entreno|intra.?workout|hidratacion|electrolit/],
     ["Proteínas", /proteina|whey|isolat|itholat|caseina|iso\s*100|nitro[-\s]*tech|syntha|hidrolizad|hydrolyz|suero|albumin|carnivor/]
   ];
-  var TIPO_ORDER = ["Creatinas", "Proteínas", "PWO", "Aminoácidos", "Quemadores de Grasa", "Vitaminas", "Ganadores", "Soporte hormonal", "Snacks", "Accesorios", "Otros"];
+  // 2.18.11 · Mismas categorías que Vender en la app, con nombres más claros para el cliente.
+  var TIPO_ORDER = ["Proteínas", "Creatinas", "Pre-entrenos", "Aminoácidos y recuperación", "Quemadores de grasa", "Vitaminas y salud", "Ganadores de peso", "Soporte hormonal", "Snacks y bebidas", "Accesorios", "Otros"];
   function classifyTipo(p) {
-    var t = fold((p && (p.segment || p.category) || "") + " " + (p && p.name || ""));
+    // 2.18.11 · Subcategoría + categoría general + nombre: así «Vitaminas / Salud», «Ropa / Accesorios» o
+    // «Pérdida de peso» ubican lo que la subcategoría sola no dice (NAC, rodilleras, geles reductores…).
+    var t = fold((p && p.segment || "") + " " + (p && p.category || "") + " " + (p && p.name || ""));
     for (var i = 0; i < SEGMENT_RULES.length; i++) if (SEGMENT_RULES[i][1].test(t)) return SEGMENT_RULES[i][0];
     return "Otros";
   }
@@ -634,10 +652,19 @@
       var hay = fold(p.name + " " + p.brand + " " + p.segment + " " + p.category + " " + tipoOf(p) + " " + p.flavors);
       return q.every(function (w) { return hay.indexOf(w) >= 0; });
     }).sort(byRank);
-    if (fl.sort) out = out.slice().sort(function (a, b) { return fl.sort === "asc" ? a.price - b.price : b.price - a.price; });
+    if (fl.sort) out = out.slice().sort(function (a, b) {
+      if (fl.sort === "az" || fl.sort === "za") { var c = String(a.name || "").localeCompare(String(b.name || ""), "es", { sensitivity: "base" }); return fl.sort === "az" ? c : -c; }
+      return fl.sort === "asc" ? a.price - b.price : b.price - a.price;
+    });
+    // 2.18.11 · Agrupado por categoría (en el orden de TIPO_ORDER); dentro, el orden elegido.
+    var rank = function (p) { var g = groupOf(p); if (g === FEATURED) return -1; var i = TIPO_ORDER.indexOf(g); return i < 0 ? TIPO_ORDER.length : i; };
+    out = out.map(function (p, i) { return [p, i]; }).sort(function (a, b) { return rank(a[0]) - rank(b[0]) || a[1] - b[1]; }).map(function (x) { return x[0]; });
     return out;
   }
-  var activeFilters = function () { return fl.tipos.length + fl.marcas.length + fl.precios.length + (fl.avail ? 1 : 0) + (fl.sort ? 1 : 0); };
+  // 2.18.11 · Con «Recomendados», los destacados (1, 2, 3…) van primero en su propio encabezado.
+  var FEATURED = "Destacados";
+  function groupOf(p) { return !fl.sort && Number(p.destacado) > 0 ? FEATURED : tipoOf(p); }
+  var activeFilters = function () { return fl.tipos.length + fl.marcas.length + fl.precios.length + (fl.avail ? 1 : 0); };
   function tipoList() {
     var order = (data.catalog.tipos || []).slice();
     products.forEach(function (p) { var t = tipoOf(p); if (order.indexOf(t) < 0) order.push(t); });
@@ -650,10 +677,22 @@
   }
   function renderGrid() {
     var list = filtered();
-    var html = list.slice(0, shown).map(card).join("");
+    var pages = Math.max(1, Math.ceil(list.length / perPage));
+    if (page > pages) page = pages;
+    var slice = list.slice((page - 1) * perPage, page * perPage);
+    var counts = {}; list.forEach(function (p) { var t = groupOf(p); counts[t] = (counts[t] || 0) + 1; });
+    var last = "", html = "";
+    slice.forEach(function (p) {
+      var t = groupOf(p);
+      if (t !== last) { html += '<h2 class="cath">' + esc(t) + "<span>" + counts[t] + "</span></h2>"; last = t; }
+      html += card(p);
+    });
     $("grid").innerHTML = html || '<div class="empty" style="grid-column:1/-1">No encontré productos con esa búsqueda.</div>';
-    $("more").hidden = list.length <= shown;
-    $("more").textContent = "Ver más productos (" + (list.length - shown) + ")";
+    $("pager").hidden = pages <= 1;
+    $("pager").innerHTML = '<button type="button" data-page="prev"' + (page <= 1 ? " disabled" : "") + ' aria-label="Página anterior">‹ Anterior</button>' +
+      "<span>Página " + page + " de " + pages + "</span>" +
+      '<button type="button" data-page="next"' + (page >= pages ? " disabled" : "") + ' aria-label="Página siguiente">Siguiente ›</button>';
+    if ($("sortsel")) $("sortsel").value = fl.sort || "";
     var title = fl.tipos.length === 1 ? fl.tipos[0] : fl.marcas.length === 1 && !fl.tipos.length ? fl.marcas[0] : query.trim() ? "Resultados" : activeFilters() ? "Filtrados" : "Todos los productos";
     $("count").innerHTML = "<b>" + esc(title) + "</b><span>" + list.length + "</span>";
     var n = activeFilters();
@@ -676,11 +715,27 @@
       '<div class="searchrow"><label class="search">' + ICON_SEARCH + '<input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Buscar producto o marca" aria-label="Buscar producto, marca o sabor" value="' + esc(query) + '">' +
       '<button class="qx" id="qx" type="button" aria-label="Borrar búsqueda"' + (query ? "" : " hidden") + ">" + ICON_X + "</button></label>" +
       '<button class="fbtn" id="fbtn" type="button" data-flt="open" aria-label="Filtrar productos">' + ICON_SLIDERS + "</button></div>" +
+      '<div class="tools"><label>Ordenar<select id="sortsel" aria-label="Ordenar productos">' +
+      [["", "Recomendados"], ["az", "Nombre: A a Z"], ["za", "Nombre: Z a A"], ["asc", "Menor precio"], ["desc", "Mayor precio"]].map(function (o) { return '<option value="' + o[0] + '"' + ((fl.sort || "") === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") +
+      '</select></label><label class="n">Mostrar<select id="persel" aria-label="Productos por página">' +
+      PER_OPTIONS.map(function (n) { return '<option value="' + n + '"' + (n === perPage ? " selected" : "") + ">" + n + "</option>"; }).join("") +
+      "</select></label></div>" +
       '<div class="fsum2" id="count"></div>' +
-      '<div class="grid" id="grid"></div><button class="more" id="more" type="button" hidden></button>';
-    $("q").addEventListener("input", function (e) { query = e.target.value; shown = PAGE; $("qx").hidden = !query; renderGrid(); });
-    $("qx").addEventListener("click", function () { query = ""; $("q").value = ""; $("qx").hidden = true; shown = PAGE; renderGrid(); $("q").focus(); });
-    $("more").addEventListener("click", function () { shown += PAGE; renderGrid(); });
+      '<div class="grid" id="grid"></div><div class="pager" id="pager" hidden></div>';
+    $("q").addEventListener("input", function (e) { query = e.target.value; page = 1; $("qx").hidden = !query; renderGrid(); });
+    $("qx").addEventListener("click", function () { query = ""; $("q").value = ""; $("qx").hidden = true; page = 1; renderGrid(); $("q").focus(); });
+    $("sortsel").addEventListener("change", function (e) { fl.sort = e.target.value; page = 1; renderGrid(); });
+    $("persel").addEventListener("change", function (e) {
+      perPage = Number(e.target.value) || 50; page = 1;
+      try { localStorage.setItem("nova-pedido-por-pagina", String(perPage)); } catch (err) {}
+      renderGrid();
+    });
+    $("pager").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-page]"); if (!b || b.disabled) return;
+      page += b.getAttribute("data-page") === "next" ? 1 : -1;
+      renderGrid();
+      var c = $("count"); if (c && c.scrollIntoView) c.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
     renderGrid();
     renderBar();
     var wa = String(c.whatsapp || "").replace(/\D/g, "");
@@ -716,7 +771,7 @@
   }
   function onAct(e) {
     var ft = e.target.closest("[data-flt]");
-    if (ft) { if (e.type === "click") { if (ft.getAttribute("data-flt") === "quick-avail") { fl.avail = !fl.avail; shown = 40; renderGrid(); var qb = $("fquick"); if (qb) { qb.setAttribute("aria-pressed", fl.avail ? "true" : "false"); qb.style.background = fl.avail ? "#111" : "#fff"; qb.style.color = fl.avail ? "#fff" : "#111"; qb.style.borderColor = fl.avail ? "#111" : "#d4d4d8"; } } else onFilter(ft, ft.getAttribute("data-flt")); } return; }
+    if (ft) { if (e.type === "click") { if (ft.getAttribute("data-flt") === "quick-avail") { fl.avail = !fl.avail; page = 1; renderGrid(); var qb = $("fquick"); if (qb) { qb.setAttribute("aria-pressed", fl.avail ? "true" : "false"); qb.style.background = fl.avail ? "#111" : "#fff"; qb.style.color = fl.avail ? "#fff" : "#111"; qb.style.borderColor = fl.avail ? "#111" : "#d4d4d8"; } } else onFilter(ft, ft.getAttribute("data-flt")); } return; }
     var t = e.target.closest("[data-act]"); if (!t) return;
     var id = t.getAttribute("data-id"), act = t.getAttribute("data-act");
     if (e.type === "click") {
@@ -814,7 +869,7 @@
     resetDrag(document.querySelector("#fsheet .panel"));
     $("fsheet").classList.remove("on");
     if (!$("sheet").classList.contains("on") && !$("detail").classList.contains("on")) document.body.classList.remove("lock");
-    shown = PAGE; renderGrid();
+    page = 1; renderGrid();
   }
   function checkRow(act, value, label, count, on) {
     return '<button class="ck' + (on ? " on" : "") + '" type="button" data-flt="' + act + '" data-v="' + esc(value) + '" aria-pressed="' + on + '" aria-label="' + esc(label) + '">' +
@@ -831,6 +886,7 @@
     var count = function (skip, test) { return filtered(skip).filter(test).length; };
     var quick = [
       limited() ? ["avail", "En existencia", fl.avail] : null,
+      ["az", "A a Z", fl.sort === "az"],
       ["asc", "Menor precio", fl.sort === "asc"],
       ["desc", "Mayor precio", fl.sort === "desc"],
     ].filter(Boolean);
@@ -1454,6 +1510,9 @@
     if (d.catalog) {
       d.catalog.tipos = TIPO_ORDER.filter(function (t) { return products.some(function (p) { return tipoOf(p) === t; }); });
     }
+    // 2.18.11 · Los productos sin foto no se muestran (en la demostración sí, para probar).
+    if (!demo) products = products.filter(function (p) { return !!imgUrl(p); });
+    if (d.catalog) d.catalog.tipos = TIPO_ORDER.filter(function (t) { return products.some(function (p) { return tipoOf(p) === t; }); });
     byId = {}; products.forEach(function (p) { byId[p.id] = p; });
     load();
     Object.keys(cart).forEach(function (id) { if (!byId[id]) delete cart[id]; else cart[id] = Math.min(cart[id], maxOf(byId[id])); }); var lk = link(); const ttlH = Number(lk.token_ttl_hours || 12); const expMs = lk.expires_at ? Date.parse(lk.expires_at) : ((Date.parse(lk.updated_at || lk.created_at || "") || Date.now()) + ttlH * 3600000); const remMs = expMs - Date.now(); if (remMs <= 0) { window._tokExpired = true; var waNum = String((d.catalog && d.catalog.whatsapp) || "").replace(/[^0-9]/g, ""); var waUrl = "https://wa.me/" + (waNum.length >= 10 ? (waNum.length === 10 ? "52" + waNum : waNum) : "") + "?text=" + encodeURIComponent("Hola, mi enlace de pedido expiró tras sus " + ttlH + " horas de vigencia. ¿Me lo pueden renovar desde la app?"); $("main").innerHTML = '<div class="card hero"><h1>Enlace expirado</h1><p>Este enlace ha expirado tras sus ' + ttlH + ' horas de vigencia.</p><a class="btn" href="' + waUrl + '" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:12px;padding:10px 16px;border-radius:10px;background:#25D366;color:#fff;font-weight:700;text-decoration:none">Contactar por WhatsApp para renovar</a></div>'; return; } window._tokExpired = false;
