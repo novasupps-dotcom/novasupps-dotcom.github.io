@@ -1341,8 +1341,11 @@
     if (l.general) {
       html += '<h3 class="sec">Tus datos</h3><div class="card">' +
         field("name", "Tu nombre *", "text", "name", "", 120, "Ej. Ana López") + field("phone", "Tu WhatsApp (10 dígitos) *", "tel", "tel", "numeric", 20, "10 dígitos") +
-        '<details class="more"' + (contact.business || contact.email ? " open" : "") + '><summary>¿Compras para un gimnasio o negocio? (opcional)</summary>' +
-        field("business", "Negocio o gimnasio", "text", "organization") + field("email", "Correo (opcional)", "email", "email") + "</details></div>";
+        // 2.18.13 · El correo es obligatorio: ahí llegan la liga de pago y el seguimiento del pedido.
+        field("email", "Tu correo *", "email", "email", "email", 120, "nombre@correo.com") +
+        '<p class="hint">Ahí te mandamos la liga de pago y el seguimiento de tu pedido.</p>' +
+        '<details class="more"' + (contact.business ? " open" : "") + '><summary>¿Compras para un gimnasio o negocio? (opcional)</summary>' +
+        field("business", "Negocio o gimnasio", "text", "organization") + "</details></div>";
     }
     html += '<div id="err" style="margin-top:12px"></div><button class="cta full" type="button" id="next">Continuar</button>';
     $("sheetin").innerHTML = html;
@@ -1495,6 +1498,7 @@
     if (l.general) {
       if (String(contact.name || "").trim().length < 2) return { el: $("c-name"), msg: "Escribe tu nombre." };
       if (String(contact.phone || "").replace(/\D/g, "").length < 10) return { el: $("c-phone"), msg: "Escribe tu WhatsApp a 10 dígitos." };
+      if (!emailOk(contact.email)) return { el: $("c-email"), msg: String(contact.email || "").trim() ? "Revisa tu correo: debe ser como nombre@correo.com." : "Escribe tu correo: ahí te llegan la liga de pago y el seguimiento." };
     }
     return null;
   }
@@ -1506,6 +1510,7 @@
     if (!window._termsAccepted) return { el: document.querySelector(".accept"), msg: "Acepta los términos para enviar tu pedido." };
     return null;
   }
+  var emailOk = function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v || "").trim()); };
   function unflag(el) { if (!el) return; el.classList.remove("bad"); if (el._ferr && el._ferr.parentNode) el._ferr.parentNode.removeChild(el._ferr); el._ferr = null; }
   /** Marca en rojo lo que falta, dice qué es y te lleva ahí (con el cursor si es un campo). */
   function guide(m) {
@@ -1538,6 +1543,7 @@
     if (l.general) {
       if (String(contact.name || "").trim().length < 2) return showErr("Escribe tu nombre.");
       if (String(contact.phone || "").replace(/\D/g, "").length < 10) return showErr("Escribe tu WhatsApp a 10 dígitos.");
+      if (!emailOk(contact.email)) return showErr("Escribe tu correo: ahí te llegan la liga de pago y el seguimiento.");
     }
     var addrErr = deliveryMode(t.q) === "paqueteria" ? addressError(l.general) : "";
     if (addrErr) return showErr(addrErr);
