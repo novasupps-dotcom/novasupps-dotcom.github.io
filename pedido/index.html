@@ -38,7 +38,13 @@
   [hidden] { display: none !important; }
   /* 2.18.13 · Foco visible (teclado, interruptores): contorno de tinta en todo lo que se puede usar. */
   :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-  .field:focus-visible, .step input:focus-visible, .flav:focus-visible, .colq input:focus-visible { outline: 2px solid var(--ink); outline-offset: 0; background: var(--paper); }
+  /* 2.18.13 · El anillo va por dentro (box-shadow): el campo no cambia de tamaño ni se desfasa. */
+  .field:focus-visible, .step input:focus-visible, .flav:focus-visible, .colq input:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--ink); background: var(--paper); }
+  /* Obligatorio sin llenar: marco rojo y la indicación debajo. */
+  .bad, .field.bad, .card.bad, .lugar.bad { box-shadow: inset 0 0 0 2px var(--red) !important; }
+  .lugar.bad { border-radius: 14px; padding: 6px; }
+  .ferr { color: #B3141C; font-size: 14px; font-weight: 600; margin: 6px 2px 0; }
+  .cta.wait { background: #8E8D93; }
   .open:focus-visible { outline-offset: -2px; border-radius: 12px; }
   html { -webkit-text-size-adjust: 100%; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
@@ -67,7 +73,7 @@
      de filtro circular de 44 px (área táctil mínima de Apple y Samsung) con el número de filtros. */
   .searchrow { display: flex; align-items: center; gap: 10px; }
   .search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 6px 0 14px; border-radius: 22px; background: rgba(118, 118, 128, .12); transition: box-shadow .15s; }
-  .search:focus-within { box-shadow: 0 0 0 2px var(--ink); background: var(--paper); }
+  .search:focus-within { box-shadow: inset 0 0 0 2px var(--ink); background: var(--paper); }
   .search > svg { width: 18px; height: 18px; stroke: var(--muted); fill: none; stroke-width: 2.2; flex: none; }
   .search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; font-size: 17px; letter-spacing: -.2px; }
   .search input::placeholder { color: #8E8E93; }
@@ -252,9 +258,8 @@
   /* 2.17.2 · Dirección, colonias y envío */
   .two2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
   .cpfield { font-size: 20px; font-weight: 700; letter-spacing: 3px; font-variant-numeric: tabular-nums; max-width: 180px; }
-  .opts { max-height: 264px; overflow-y: auto; -webkit-overflow-scrolling: touch; border-radius: 14px; background: var(--bg); }
-  .opt { display: flex; align-items: center; gap: 12px; min-height: 48px; margin: 0; padding: 10px 14px; border-top: 1px solid var(--line); color: var(--ink); font-size: 15.5px; font-weight: 500; cursor: pointer; }
-  .opt:first-child { border-top: 0; }
+  .opts { max-height: 264px; overflow-y: auto; -webkit-overflow-scrolling: touch; border-radius: 14px; background: var(--bg); padding: 4px; display: flex; flex-direction: column; gap: 2px; }
+  .opt { display: flex; align-items: center; gap: 12px; min-height: 48px; margin: 0; padding: 10px 12px; border-radius: 10px; color: var(--ink); font-size: 15.5px; font-weight: 500; cursor: pointer; flex: none; }
   .opt input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--ink); }
   .opt span { flex: 1; min-width: 0; }
   .opt small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 400; }
@@ -536,9 +541,10 @@
     // 2.17.4 · Con envío gratis solo hay una opción («Tu envío es gratis»): ya no se elige local o paquetería.
     var zSel = contact && contact.zone;
     var z = free ? "gratis" : ZONES[zSel] ? zSel : "";
-    var shipCost = z && !free ? ZONES[z].cost() : 0;
-    q.zone = z; q.freeShipping = free; q.shippingCost = shipCost;
-    q.shippingText = !z ? "" : free ? "Envío gratis" : ZONES[z].title + ": " + money(shipCost);
+    var imm = cartImmediate();
+    var shipCost = z && !free ? zoneInfo(z, imm).cost() : 0;
+    q.zone = z; q.freeShipping = free; q.shippingCost = shipCost; q.immediate = imm;
+    q.shippingText = !z ? "" : free ? "Envío gratis" : zoneInfo(z, imm).title + ": " + money(shipCost);
     q.total = q.productsTotal + shipCost;
     return { lines: ls, pieces: ls.reduce(function (n, l) { return n + l.qty; }, 0), q: q };
   }
@@ -555,6 +561,26 @@
     var set = {};
     p.sabores_inmediata.forEach(function (f) { set[fold(String(f || "").trim())] = 1; });
     return set;
+  }
+  /**
+   * 2.18.13 · ¿Esta pieza es de entrega inmediata? El producto está en mano y, si el dueño marcó
+   * sabores en mano, todos los sabores elegidos lo están.
+   */
+  function lineImmediate(p) {
+    if (!hasStock(p)) return false;
+    var set = inHand(p); if (!set) return true;
+    var fq = flavorQty[p.id] || {}, chosen = Object.keys(fq).filter(function (k) { return fq[k] > 0; });
+    if (chosen.length) return chosen.every(function (f) { return !!set[fold(f)]; });
+    var fl = flavorList(p);
+    return fl.length === 1 ? !!set[fold(fl[0])] : true;
+  }
+  /** Todo el pedido es de entrega inmediata: la entrega local es en menos de 24 h y sin costo. */
+  function cartImmediate() { var ls = lines(); return ls.length > 0 && ls.every(function (x) { return lineImmediate(x.p); }); }
+  /** Datos de cada tipo de envío (la entrega local cambia si todo es de entrega inmediata). */
+  function zoneInfo(k, imm) {
+    var z = ZONES[k]; if (!z) return null;
+    if (k === "local" && imm) return { title: "Entrega inmediata", sub: "En menos de 24 horas · sin costo · en el lugar que elijas", cost: function () { return 0; } };
+    return z;
   }
   function flavorTag(p, f) {
     var set = inHand(p);
@@ -836,6 +862,7 @@
     else if ($("sheet").classList.contains("on")) renderReviewTotals();
   }
   function onAct(e) {
+    if (e.type !== "click") { var bd = e.target.closest && e.target.closest(".bad"); if (bd) unflag(bd); if ($("sheet").classList.contains("on")) setTimeout(updateWait, 0); }
     var ft = e.target.closest("[data-flt]");
     if (ft) { if (e.type === "click") { if (ft.getAttribute("data-flt") === "quick-avail") { fl.avail = !fl.avail; page = 1; renderGrid(); var qb = $("fquick"); if (qb) { qb.setAttribute("aria-pressed", fl.avail ? "true" : "false"); qb.style.background = fl.avail ? "#111" : "#fff"; qb.style.color = fl.avail ? "#fff" : "#111"; qb.style.borderColor = fl.avail ? "#111" : "#d4d4d8"; } } else onFilter(ft, ft.getAttribute("data-flt")); } return; }
     var t = e.target.closest("[data-act]"); if (!t) return;
@@ -918,6 +945,21 @@
       if ($("sheet").classList.contains("on")) renderReview();
     }
   }
+  // 2.18.13 · Al tocar fuera de un campo se suelta (se cierra el teclado y ya no queda marcado).
+  document.addEventListener("touchstart", function (e) {
+    var a = document.activeElement;
+    if (!a || !/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.type === "radio" || a.type === "checkbox") return;
+    if (e.target.closest && e.target.closest("input, textarea, select")) return;
+    a.blur();
+  }, { passive: true });
+  // «Siguiente» del teclado: pasa al siguiente campo visible; en el último, cierra el teclado.
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" || !e.target.classList || !e.target.classList.contains("field") || e.target.tagName !== "INPUT") return;
+    e.preventDefault();
+    var all = Array.prototype.filter.call(document.querySelectorAll("#sheetin input.field, #sheetin select.field"), function (x) { return x.offsetParent !== null; });
+    var i = all.indexOf(e.target), nx = all[i + 1];
+    if (nx) nx.focus(); else e.target.blur();
+  });
   var calm = function () { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } };
   document.addEventListener("click", onAct);
   // 2.18.13 · Lo que se abre tocando (foto del producto) también se abre con Enter o espacio.
@@ -1128,7 +1170,7 @@
       '<div class="price" style="margin-top:10px"><b>' + money(yourPrice(p)) + "</b>" + (off ? "<s>" + money(p.price) + "</s>" : "") + (perServing ? '<small class="per">' + money(perServing) + " por servicio</small>" : "") + "</div>" +
       (off ? '<span class="badge">Nivel ' + esc(link().tier_name) + " · " + bpsLabel(tierBps()) + " aplicado</span>" : "") +
       (limited() && p.avail != null ? '<div class="stock" style="margin-top:8px">' + (max > 0 ? "Disponibles: " + max : "Agotado") + "</div>" : "") +
-      (inStock ? '<div class="status ok">Entrega inmediata · en tu punto en menos de 72 h</div>' : onOrder(p) ? '<div class="status warn">Sobre pedido · 1 a 5 días hábiles</div>' : '<div class="status">Entrega en 1 a 5 días hábiles, según disponibilidad</div>') +
+      (inStock ? '<div class="status ok">Entrega inmediata · en menos de 24 h</div>' : onOrder(p) ? '<div class="status warn">Sobre pedido · 1 a 5 días hábiles</div>' : '<div class="status">Entrega en 1 a 5 días hábiles, según disponibilidad</div>') +
       "</div>";
     if (list.length > 1) {
       html += '<div class="card" id="flv-card"><p class="sec" style="margin-top:0">Elige sabores *</p>' + list.map(function (f, i) {
@@ -1186,8 +1228,8 @@
           return '<label class="opt' + (on ? " on" : "") + '"><input type="radio" name="freemode" data-act="freemode" value="' + o[0] + '"' + (on ? " checked" : "") + "><span>" + o[1] + "<small>" + o[2] + "</small></span></label>";
         }).join("") + "</div>" + (contact.freeMode === "local" ? lugaresHtml() : "")
       : Object.keys(ZONES).map(function (k) {
-          var z = ZONES[k], on = contact.zone === k;
-          return '<label class="pay ship' + (on ? " on" : "") + '"><input type="radio" name="zone" data-act="zone" value="' + k + '"' + (on ? " checked" : "") + "><span>" + esc(z.title) + "<small>" + esc(z.sub) + '</small></span><b class="zp">+' + pesos(z.cost()) + " MXN</b></label>" +
+          var z = zoneInfo(k, q.immediate), on = contact.zone === k, cost = z.cost();
+          return '<label class="pay ship' + (on ? " on" : "") + '"><input type="radio" name="zone" data-act="zone" value="' + k + '"' + (on ? " checked" : "") + "><span>" + esc(z.title) + "<small>" + esc(z.sub) + '</small></span><b class="zp">' + (cost ? "+" + pesos(cost) + " MXN" : "Sin costo") + "</b></label>" +
             (k === "local" && on ? lugaresHtml() : "");
         }).join("");
     // Pago al entregar solo con entrega local.
@@ -1204,7 +1246,7 @@
   /** 2.17.6 · Entrega estimada según el envío elegido. */
   function deliveryEta(q) {
     var m = deliveryMode(q);
-    return m === "local" ? "Menos de 72 horas hábiles · entrega sujeta a disponibilidad" : m === "paqueteria" ? "3 a 5 días hábiles después de confirmar tu pago" : DELIVERY;
+    return m === "local" ? (q.immediate ? "Inmediata · en menos de 24 horas" : "Menos de 72 horas hábiles · entrega sujeta a disponibilidad") : m === "paqueteria" ? "3 a 5 días hábiles después de confirmar tu pago" : DELIVERY;
   }
   /**
    * 2.17.6 · Barra de beneficios: las metas de descuento por volumen y el envío gratis en una sola
@@ -1239,23 +1281,24 @@
     var bene = $("benefits"); if (bene) bene.innerHTML = q.subtotal >= 250000 ? benefitsHtml(q) : "";
     var addr = $("addr-card"); if (addr) addr.hidden = deliveryMode(q) !== "paqueteria";
     var nx = $("next"); if (nx) nx.textContent = "Continuar · " + money(q.total);
+    setTimeout(updateWait, 0);
     if (!el) { renderShipping(t); var inf = $("sheetinfo"); if (inf) inf.textContent = plural(t.pieces, "pieza", "piezas") + " · " + plural(t.lines.length, "producto", "productos"); return; }
     var mode = deliveryMode(q);
     var shipLabel = q.freeShipping ? "Envío gratis" + (mode === "local" ? " · local" : mode === "paqueteria" ? " · paquetería" : "")
-      : q.zone ? ZONES[q.zone].title : "Envío";
+      : q.zone ? zoneInfo(q.zone, q.immediate).title : "Envío";
     var place = mode === "local" && contact.lugar ? "<small>" + esc(contact.lugar) + "</small>" : "";
     el.innerHTML =
       '<div class="row"><span>Subtotal · ' + plural(t.pieces, "pieza", "piezas") + "</span><b>" + money(q.subtotal) + "</b></div>" +
       (q.tierDiscount ? '<div class="row off"><span>Nivel ' + esc(link().tier_name) + " (" + bpsLabel(q.tierBps) + ")</span><b>−" + money(q.tierDiscount) + "</b></div>" : "") +
       (q.volumeDiscount ? '<div class="row off"><span>Descuento por volumen (' + bpsLabel(q.volumeBps) + ")</span><b>−" + money(q.volumeDiscount) + "</b></div>" : "") +
       (q.floorLimited ? '<div class="note warn">Algunos productos ya están en su precio mínimo: el descuento se ajustó.</div>' : "") +
-      '<div class="row"><span>' + esc(shipLabel) + place + "</span><b" + (q.zone ? "" : ' class="muted"') + ">" + (q.freeShipping ? "Gratis" : q.zone ? money(q.shippingCost) : "Elige arriba") + "</b></div>" +
+      '<div class="row"><span>' + esc(shipLabel) + place + "</span><b" + (q.zone ? "" : ' class="muted"') + ">" + (q.freeShipping || (q.zone && !q.shippingCost) ? "Sin costo" : q.zone ? money(q.shippingCost) : "Elige arriba") + "</b></div>" +
       '<div class="row"><span>Entrega estimada</span><b>' + esc(deliveryEta(q)) + "</b></div>" +
       '<div class="row total"><span>Total a pagar</span><b>' + money(q.total) + "</b></div>" +
       (below ? '<div class="note bad">El pedido mínimo es de ' + money(c.minOrder) + " (subtotal).</div>" : "");
     renderShipping(t);
     var btn = $("send");
-    if (btn) btn.disabled = sending || !t.pieces || !!below || !window._termsAccepted;
+    if (btn) btn.disabled = sending || !t.pieces || !!below;
     var info = $("sheetinfo");
     if (info) info.textContent = plural(t.pieces, "pieza", "piezas") + " · " + plural(t.lines.length, "producto", "productos");
   }
@@ -1273,6 +1316,9 @@
       return;
     }
     if (step === 2) return renderPay(t, l);
+    // 2.18.13 · Todo de entrega inmediata: ya queda elegida la entrega local (sin costo) con los lugares a la vista.
+    if (t.q.immediate && !t.q.freeShipping && !contact.zone) { contact.zone = "local"; lugarOpen = !contact.lugar; t = totals(); }
+    if (t.q.immediate && t.q.freeShipping && !contact.freeMode) { contact.freeMode = "local"; lugarOpen = !contact.lugar; t = totals(); }
     var html = '<div class="top"><button type="button" id="back">' + CHEV_L + 'Catálogo</button><h2>Tu pedido</h2></div>';
     html += '<div class="card"><p class="sub" id="sheetinfo"></p>' + t.lines.map(function (x) {
       var p = x.p;
@@ -1311,14 +1357,9 @@
     var t = totals(), l = link();
     var missF = firstMissingFlavor();
     if (missF) { openDetail(missF); toast("Por favor selecciona un sabor", "flavor"); pulseFlavors(); return; }
-    if (!t.q.freeShipping && !t.q.zone) return showErr("Elige cómo lo recibes: entrega local o paquetería.");
-    if (t.q.freeShipping && !contact.freeMode) return showErr("Elige cómo recibes tu pedido: entrega local o paquetería.");
-    if (deliveryMode(t.q) === "local" && lugares().indexOf(contact.lugar) < 0) { lugarOpen = true; renderReviewTotals(); return showErr("Elige dónde te lo entregamos."); }
-    if (deliveryMode(t.q) === "paqueteria") { var addrErr = addressError(l.general); if (addrErr) return showErr(addrErr); }
-    if (l.general) {
-      if (String(contact.name || "").trim().length < 2) return showErr("Escribe tu nombre.");
-      if (String(contact.phone || "").replace(/\D/g, "").length < 10) return showErr("Escribe tu WhatsApp a 10 dígitos.");
-    }
+    var m = missing1();
+    if (m && m.lugar && !lugarOpen) { lugarOpen = true; renderReviewTotals(); m = missing1(); }
+    if (m) return guide(m);
     step = 2; pushLayer("step2"); renderReview(); $("sheet").scrollTop = 0;
   }
   function renderPay(t, l) {
@@ -1332,7 +1373,7 @@
       '<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg><span>Originales y sellados. Cambio sin costo si llega dañado o equivocado.</span></li>' +
       '<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.1-5.6A8.4 8.4 0 1 1 21 11.5z"/></svg><span>No se cobra nada ahora: te confirmamos existencia y total por WhatsApp.</span></li></ul>' +
       '<div class="card terms"><h3 class="tt">Términos del pedido</h3><ul class="tsum">' +
-      "<li>Entrega local en menos de 72 h hábiles, sujeta a disponibilidad; paquetería de 3 a 5 días hábiles después de tu pago.</li>" +
+      "<li>Entrega inmediata: menos de 24 h y sin costo. Entrega local: menos de 72 h hábiles, sujeta a disponibilidad. Paquetería: 3 a 5 días hábiles después de tu pago.</li>" +
       "<li>Revisa tu pedido al recibirlo: faltantes o daños, avísanos en 48 h con foto.</li>" +
       "<li>No aceptamos devoluciones de productos abiertos o sin sello.</li></ul>" +
       '<details class="more"><summary>Ver términos completos</summary>' + termsHtml() + "</details></div>" +
@@ -1343,13 +1384,12 @@
     $("send").onclick = send;
     // 2.15.4 · «Enviar pedido» se activa solo al aceptar los Términos y Condiciones.
     $("termsAccept").checked = !!window._termsAccepted;
-    $("send").disabled = !window._termsAccepted;
     $("termsAccept").onchange = function () { window._termsAccepted = !!this.checked; renderReviewTotals(); if (window._termsAccepted && $("err")) $("err").innerHTML = ""; };
     renderReviewTotals();
     mountTurnstile();
   }
   function field(k, label, type, auto, mode, max, ph) {
-    return '<label for="c-' + k + '">' + label + '</label><input class="field" id="c-' + k + '" type="' + type + '" autocomplete="' + (auto || "off") + '"' + (mode ? ' inputmode="' + mode + '"' : "") + ' data-act="contact" data-k="' + k + '" maxlength="' + (max || 120) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : "") + ' value="' + esc(contact[k] || "") + '">';
+    return '<label for="c-' + k + '">' + label + '</label><input class="field" enterkeyhint="next" id="c-' + k + '" type="' + type + '" autocomplete="' + (auto || "off") + '"' + (mode ? ' inputmode="' + mode + '"' : "") + ' data-act="contact" data-k="' + k + '" maxlength="' + (max || 120) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : "") + ' value="' + esc(contact[k] || "") + '">';
   }
   // ------------------------------------------------------------ 2.17.2 · código postal → colonias
   var cpCache = {}, cpData = null, cpAsked = "";
@@ -1408,7 +1448,7 @@
     return "<ol>" +
       li("Precios y existencias.", "Precios en pesos mexicanos. Tu pedido es una solicitud: confirmamos existencia, precio final y total a pagar en tu orden de compra por WhatsApp (" + esc(wa) + ") antes de cualquier cobro. Respondemos el mismo día hábil; los pedidos que llegan después de las 18:00 h o en fin de semana se confirman el siguiente día hábil.") +
       li("Tiempo de entrega.", "De 1 a 5 días hábiles según la disponibilidad de cada producto en almacén. Son días hábiles de lunes a viernes, sin días festivos; los pedidos confirmados después de las 18:00 h o en fin de semana cuentan desde el siguiente día hábil. Si un producto es sobre pedido y tarda más, te avisamos antes de surtir.") +
-      li("Envío local (" + pesos(envioLocal()) + ").", "Entrega en menos de 72 horas hábiles, sujeta a disponibilidad del producto en almacén, en uno de estos lugares: " + lugares().join(", ") + ". Te confirmamos día y hora por WhatsApp.") +
+      li("Envío local (" + pesos(envioLocal()) + ").", "Si todo tu pedido es de entrega inmediata, se entrega en menos de 24 horas y sin costo. Si no, en menos de 72 horas hábiles, sujeta a disponibilidad del producto en almacén. Se entrega en uno de estos lugares: " + lugares().join(", ") + ". Te confirmamos día y hora por WhatsApp.") +
       li("Envío por paquetería (" + pesos(envioForaneo()) + ").", "A todo México, de 3 a 5 días hábiles a partir de que se confirma tu pago. El tiempo de la paquetería puede variar en zonas extendidas.") +
       li("Envío sin costo.", "En pedidos con subtotal de productos desde " + pesos(envioGratis()) + ", local o por paquetería. Gimnasios con pedidos desde $15,000: entrega directa en sus instalaciones dentro de la cobertura local.") +
       li("Descuentos por volumen.", "Sobre el subtotal de productos: 3 % desde $5,000, 8.5 % desde $10,001 y 15 % desde $15,001. No se acumulan con otras promociones. Cada producto tiene un precio mínimo: si un descuento lo rebasa, se ajusta y lo verás en tu resumen. El envío no tiene descuento.") +
@@ -1428,16 +1468,60 @@
   ];
   var ADDR = ["street", "col", "addr2", "city", "cp", "state"];
   /** Revisa la dirección: obligatoria con el enlace general; con el personal, completa si se llena. */
-  function addressError(general) {
+  function addressError(general) { var m = addressMissing(general); return m ? m[1] : ""; }
+  /** 2.18.13 · [campo, mensaje] del primer dato de la dirección que falta (o null). */
+  function addressMissing(general) {
     var v = function (k) { return String(contact[k] || "").trim(); };
     var any = ADDR.some(function (k) { return v(k); });
-    if (!general && !any) return "";
-    if (!/^\d{5}$/.test(v("cp"))) return "Escribe el código postal de la entrega (5 dígitos).";
-    if (v("col").length < 2) return "Elige o escribe la colonia de la entrega.";
-    if (v("city").length < 2) return "Escribe la ciudad o municipio de la entrega.";
-    if (!v("state")) return "Elige el estado de la entrega.";
-    if (v("street").length < 3) return "Escribe la calle y el número de la entrega.";
-    return "";
+    if (!general && !any) return null;
+    if (!/^\d{5}$/.test(v("cp"))) return ["cp", "Escribe el código postal (5 dígitos)."];
+    if (v("col").length < 2) return ["col", "Elige o escribe tu colonia."];
+    if (v("city").length < 2) return ["city", "Escribe tu ciudad o municipio."];
+    if (!v("state")) return ["state", "Elige tu estado."];
+    if (v("street").length < 3) return ["street", "Escribe la calle y el número."];
+    return null;
+  }
+  // ---- 2.18.13 · Obligatorios: el botón se ve inactivo y, al tocarlo, te lleva a lo que falta.
+  /** Lo que falta del paso 1 (sin tocar nada): { el, msg, lugar }. */
+  function missing1() {
+    var t = totals(), l = link(), zc = $("zones") && $("zones").closest(".card");
+    if (!t.q.freeShipping && !t.q.zone) return { el: zc, msg: "Elige cómo lo recibes: entrega local o paquetería." };
+    if (t.q.freeShipping && !contact.freeMode) return { el: zc, msg: "Elige cómo lo recibes: entrega local o paquetería." };
+    if (deliveryMode(t.q) === "local" && lugares().indexOf(contact.lugar) < 0) return { el: document.querySelector("#zones .lugar") || zc, msg: "Elige dónde te lo entregamos.", lugar: true };
+    if (deliveryMode(t.q) === "paqueteria") {
+      var a = addressMissing(l.general);
+      if (a) return { el: a[0] === "col" ? ($("c-col") || $("col-box")) : $("c-" + a[0]), msg: a[1] };
+    }
+    if (l.general) {
+      if (String(contact.name || "").trim().length < 2) return { el: $("c-name"), msg: "Escribe tu nombre." };
+      if (String(contact.phone || "").replace(/\D/g, "").length < 10) return { el: $("c-phone"), msg: "Escribe tu WhatsApp a 10 dígitos." };
+    }
+    return null;
+  }
+  /** Lo que falta del paso 2. */
+  function missing2() {
+    var t = totals(), pc = document.querySelector('input[name="pay"]'); pc = pc && pc.closest(".card");
+    if (!contact.pay) return { el: pc, msg: "Elige cómo vas a pagar." };
+    if (COD.indexOf(contact.pay) >= 0 && !codAllowed(t.q)) return { el: pc, msg: "Con paquetería el pago es por adelantado: elige tarjeta en línea o transferencia." };
+    if (!window._termsAccepted) return { el: document.querySelector(".accept"), msg: "Acepta los términos para enviar tu pedido." };
+    return null;
+  }
+  function unflag(el) { if (!el) return; el.classList.remove("bad"); if (el._ferr && el._ferr.parentNode) el._ferr.parentNode.removeChild(el._ferr); el._ferr = null; }
+  /** Marca en rojo lo que falta, dice qué es y te lleva ahí (con el cursor si es un campo). */
+  function guide(m) {
+    Array.prototype.forEach.call(document.querySelectorAll("#sheetin .bad"), unflag);
+    var e = $("err"); if (e) e.innerHTML = "";
+    var el = m && m.el; if (!el) return showErr(m ? m.msg : "Revisa tu pedido.");
+    el.classList.add("bad");
+    var msg = document.createElement("p"); msg.className = "ferr"; msg.setAttribute("role", "alert"); msg.textContent = m.msg;
+    if (el.classList.contains("card")) el.insertBefore(msg, el.firstChild); else el.parentNode.insertBefore(msg, el.nextSibling);
+    el._ferr = msg;
+    try { el.scrollIntoView({ block: "center", behavior: calm() ? "auto" : "smooth" }); } catch (x) {}
+    if (/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) setTimeout(function () { try { el.focus({ preventScroll: true }); } catch (x) { el.focus(); } }, 250);
+  }
+  function updateWait() {
+    var b1 = $("next"); if (b1) b1.classList.toggle("wait", !!missing1());
+    var b2 = $("send"); if (b2) b2.classList.toggle("wait", !!missing2());
   }
   function pickPay(v) {
     contact.pay = v;
@@ -1450,7 +1534,7 @@
     if (!t.pieces || sending) return;
     var missF = firstMissingFlavor();
     if (missF) { openDetail(missF); toast("Por favor selecciona un sabor", "flavor"); pulseFlavors(); return; }
-    if (!$("termsAccept") || !$("termsAccept").checked) return showErr("Debes aceptar los Términos y Condiciones para confirmar el pedido.");
+    var m2 = missing2(); if (m2) return guide(m2);
     if (l.general) {
       if (String(contact.name || "").trim().length < 2) return showErr("Escribe tu nombre.");
       if (String(contact.phone || "").replace(/\D/g, "").length < 10) return showErr("Escribe tu WhatsApp a 10 dígitos.");
@@ -1487,7 +1571,7 @@
     var dirTag = ADDR.some(function (k) { return String(contact[k] || "").trim(); })
       ? "[dir:" + ["street", "col", "addr2", "city", "state", "cp"].map(function (k) { return String(contact[k] || "").replace(/[\]~|]/g, " ").trim(); }).join("~") + "]"
       : "";
-    var totalBps = (t.q.tierBps || 0) + (t.q.volumeBps || 0); var discPct = totalBps ? (totalBps / 100) : 0; var discAmt = (t.q.tierDiscount || 0) + (t.q.volumeDiscount || 0); var dm = deliveryMode(t.q); var zoneLbl = (t.q.freeShipping ? "Envío gratis " + (dm === "local" ? "local" : "por paquetería") + " (pedido desde " + money(envioGratis()) + ")" : ZONES[dm] ? ZONES[dm].title + " (" + ZONES[dm].sub.split(" · ")[0] + ")" : "") + (dm === "local" && contact.lugar ? " · Lugar de entrega: " + contact.lugar : "");
+    var totalBps = (t.q.tierBps || 0) + (t.q.volumeBps || 0); var discPct = totalBps ? (totalBps / 100) : 0; var discAmt = (t.q.tierDiscount || 0) + (t.q.volumeDiscount || 0); var dm = deliveryMode(t.q); var zoneLbl = (t.q.freeShipping ? "Envío gratis " + (dm === "local" ? "local" : "por paquetería") + " (pedido desde " + money(envioGratis()) + ")" : zoneInfo(dm, t.q.immediate) ? zoneInfo(dm, t.q.immediate).title + " (" + zoneInfo(dm, t.q.immediate).sub.split(" · ")[0] + ")" : "") + (dm === "local" && contact.lugar ? " · Lugar de entrega: " + contact.lugar : "");
     var envTag = "[envio:" + (dm === "local" || dm === "paqueteria" ? dm : "") + "~" + (dm === "local" ? String(contact.lugar || "").replace(/[\]~|\[]/g, " ").trim() : "") + "~" + (t.q.freeShipping ? 0 : Math.round(t.q.shippingCost || 0)) + "~" + (t.q.freeShipping ? 1 : 0) + "]";
     var body = {
       p_token: token,
@@ -1515,10 +1599,12 @@
     sendOrder(body).then(done).catch(function () { done(null); });
   }
   function openConfirm(t) {
-    var q = t.q, z = ZONES[q.zone], box = $("confirm");
+    var q = t.q, z = zoneInfo(q.zone, q.immediate), box = $("confirm");
     var row = function (a, b, cls) { return '<div class="row' + (cls ? " " + cls : "") + '"><span>' + a + "</span><b>" + b + "</b></div>"; };
     var mode = deliveryMode(q);
-    var shipNote = mode === "local"
+    var shipNote = mode === "local" && q.immediate
+      ? "<b>Entrega inmediata sin costo:</b> en <b>" + esc(contact.lugar || "el lugar elegido") + "</b>, en menos de 24 horas. Te confirmamos la hora por WhatsApp."
+      : mode === "local"
       ? "<b>" + (q.freeShipping ? "Envío local gratis" : "Envío local") + ":</b> en <b>" + esc(contact.lugar || "el lugar elegido") + "</b>, en menos de 72 horas hábiles, entrega sujeta a disponibilidad del producto en almacén. Te confirmamos día y hora por WhatsApp."
       : "<b>" + (q.freeShipping ? "Envío gratis por paquetería" : "Envío por paquetería") + ":</b> de 3 a 5 días hábiles a partir de que se confirma tu pago (por adelantado: tarjeta en línea o transferencia).";
     box.innerHTML = '<div class="dim" data-cf="no"></div><div class="panel" role="dialog" aria-modal="true" aria-labelledby="cf-t"><div class="handle"></div>' +
@@ -1528,11 +1614,11 @@
       row("Subtotal", money(q.subtotal)) +
       (q.tierDiscount + q.volumeDiscount ? row("Descuentos", "−" + money(q.tierDiscount + q.volumeDiscount), "off") : "") +
       row("Total de productos", money(q.productsTotal)) +
-      row(q.freeShipping ? "Envío" : esc(z ? z.title : "Envío"), q.freeShipping ? "Gratis" : money(q.shippingCost)) +
+      row(q.freeShipping ? "Envío" : esc(z ? z.title : "Envío"), q.freeShipping || !q.shippingCost ? "Sin costo" : money(q.shippingCost)) +
       (mode === "local" && contact.lugar ? row("Lugar de entrega", esc(contact.lugar)) : "") +
       row("Total a pagar", money(q.total), "total") +
       row("Entrega estimada", esc(deliveryEta(q))) +
-      '<div class="note ' + (q.zone === "paqueteria" ? "warn" : "ok") + '" id="cf-ship">' + shipNote + " El total se confirma en tu orden de compra antes de cualquier cobro.</div>" +
+      '<div class="note ' + (q.zone === "paqueteria" ? "warn" : "ok") + '" id="cf-ship">' + shipNote + " Te confirmamos existencia y total por WhatsApp antes de cualquier cobro.</div>" +
       '<label class="pay on" style="margin-top:12px"><input type="checkbox" id="cf-ok"><span>Entiendo el costo y el tiempo de envío según los Términos y Condiciones</span></label>' +
       "</div>" +
       '<button class="fgo" type="button" id="cf-go" data-cf="yes" disabled>Confirmar y enviar · ' + money(q.total) + "</button>" +
