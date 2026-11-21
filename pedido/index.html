@@ -38,13 +38,20 @@
   [hidden] { display: none !important; }
   /* 2.18.13 · Foco visible (teclado, interruptores): contorno de tinta en todo lo que se puede usar. */
   :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-  .field:focus-visible, .step input:focus-visible, .flav:focus-visible, .colq input:focus-visible { outline: 2px solid var(--ink); outline-offset: 0; background: var(--paper); }
+  /* 2.18.13 · El anillo va por dentro (box-shadow): el campo no cambia de tamaño ni se desfasa. */
+  .field:focus-visible, .step input:focus-visible, .flav:focus-visible, .colq input:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--ink); background: var(--paper); }
+  /* Obligatorio sin llenar: marco rojo y la indicación debajo. */
+  .bad, .field.bad, .card.bad, .lugar.bad { box-shadow: inset 0 0 0 2px var(--red) !important; }
+  .lugar.bad { border-radius: 14px; padding: 6px; }
+  .ferr { color: #B3141C; font-size: 14px; font-weight: 600; margin: 6px 2px 0; }
+  .cta.wait { background: #8E8D93; }
   .open:focus-visible { outline-offset: -2px; border-radius: 12px; }
   html { -webkit-text-size-adjust: 100%; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
   body.lock { overflow: hidden; }
   button, input, textarea { font: inherit; color: inherit; }
   button { cursor: pointer; }
+  button, a, label, summary, .open { -webkit-tap-highlight-color: transparent; }
   .wrap { max-width: 760px; margin: 0 auto; padding: 18px 16px 120px; }
   header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin: -18px -16px 0; padding: 10px 16px 6px; background: var(--paper); }
   header img { height: 36px; width: auto; }
@@ -66,7 +73,7 @@
      de filtro circular de 44 px (área táctil mínima de Apple y Samsung) con el número de filtros. */
   .searchrow { display: flex; align-items: center; gap: 10px; }
   .search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 6px 0 14px; border-radius: 22px; background: rgba(118, 118, 128, .12); transition: box-shadow .15s; }
-  .search:focus-within { box-shadow: 0 0 0 2px var(--ink); background: var(--paper); }
+  .search:focus-within { box-shadow: inset 0 0 0 2px var(--ink); background: var(--paper); }
   .search > svg { width: 18px; height: 18px; stroke: var(--muted); fill: none; stroke-width: 2.2; flex: none; }
   .search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; font-size: 17px; letter-spacing: -.2px; }
   .search input::placeholder { color: #8E8E93; }
@@ -251,9 +258,8 @@
   /* 2.17.2 · Dirección, colonias y envío */
   .two2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
   .cpfield { font-size: 20px; font-weight: 700; letter-spacing: 3px; font-variant-numeric: tabular-nums; max-width: 180px; }
-  .opts { max-height: 264px; overflow-y: auto; -webkit-overflow-scrolling: touch; border-radius: 14px; background: var(--bg); }
-  .opt { display: flex; align-items: center; gap: 12px; min-height: 48px; margin: 0; padding: 10px 14px; border-top: 1px solid var(--line); color: var(--ink); font-size: 15.5px; font-weight: 500; cursor: pointer; }
-  .opt:first-child { border-top: 0; }
+  .opts { max-height: 264px; overflow-y: auto; -webkit-overflow-scrolling: touch; border-radius: 14px; background: var(--bg); padding: 4px; display: flex; flex-direction: column; gap: 2px; }
+  .opt { display: flex; align-items: center; gap: 12px; min-height: 48px; margin: 0; padding: 10px 12px; border-radius: 10px; color: var(--ink); font-size: 15.5px; font-weight: 500; cursor: pointer; flex: none; }
   .opt input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--ink); }
   .opt span { flex: 1; min-width: 0; }
   .opt small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 400; }
@@ -314,6 +320,37 @@
   .demo { display: flex; align-items: center; gap: 10px; background: #1C1C1E; color: #fff; }
   .demo b { display: block; font-size: 15px; }
   .demo span { font-size: 13px; color: #C7C7CC; }
+  /* 2.18.13 · Tu pedido en dos pasos */
+  h3.sec { margin: 20px 2px 10px; }
+  .more { margin-top: 10px; }
+  .more summary::-webkit-details-marker { display: none; }
+  .more summary { list-style: none; padding: 0; min-height: 44px; display: flex; align-items: center; font-size: 15px; font-weight: 600; color: var(--ink); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .more[open] summary { margin-bottom: 4px; }
+  .trust2 { list-style: none; margin: 4px 2px 12px; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 15px; line-height: 1.35; }
+  .trust2 li { display: flex; gap: 10px; align-items: flex-start; }
+  .trust2 svg { width: 20px; height: 20px; flex: none; stroke: var(--red); fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .terms .tt { font-family: var(--display); font-size: 17px; font-weight: 800; margin: 0 0 8px; }
+  .tsum { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.45; color: var(--muted); }
+  .tsum li { margin-bottom: 4px; }
+  .terms .more ol { margin-top: 6px; }
+  .accept { display: flex; align-items: flex-start; gap: 12px; min-height: 44px; margin: 14px 2px 12px; cursor: pointer; font-size: 15px; font-weight: 600; color: var(--ink); }
+  .accept input { width: 22px; height: 22px; margin: 0; accent-color: var(--ink); cursor: pointer; flex: none; }
+  .accept a { color: inherit; }
+  /* 2.18.13 · Ficha */
+  .top .grow { flex: 1; }
+  .topwa { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; color: var(--ink); }
+  .topwa svg, .ask svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .price .per { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .status { margin-top: 8px; font-size: 15px; line-height: 1.35; font-weight: 600; color: var(--muted); }
+  .status.ok { color: var(--green); }
+  .status.warn { color: var(--amber); }
+  .trustlist { list-style: none; padding: 4px 16px; }
+  .trustlist li { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 15px; line-height: 1.35; }
+  .trustlist li:last-child { border-bottom: 0; }
+  .trustlist svg { width: 20px; height: 20px; flex: none; stroke: var(--red); fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .ask { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; margin-bottom: 12px; border-radius: 12px; border: 1px solid var(--ink); color: var(--ink); text-decoration: none; font-size: 16px; font-weight: 600; }
+  .legal { font-size: 12px; line-height: 1.4; color: var(--muted); margin: 0 2px 12px; }
+  .dfoot { position: sticky; bottom: 0; padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(rgba(244,243,241,0), var(--bg) 30%); }
   .howto h3 { font-family: var(--display); font-size: 18px; font-weight: 800; margin: 0 0 8px; }
   .howto p { font-size: 16px; line-height: 1.5; color: var(--ink); white-space: pre-line; margin: 0; }
   .howto small { display: block; margin-top: 10px; font-size: 13px; color: var(--muted); }
@@ -504,9 +541,10 @@
     // 2.17.4 · Con envío gratis solo hay una opción («Tu envío es gratis»): ya no se elige local o paquetería.
     var zSel = contact && contact.zone;
     var z = free ? "gratis" : ZONES[zSel] ? zSel : "";
-    var shipCost = z && !free ? ZONES[z].cost() : 0;
-    q.zone = z; q.freeShipping = free; q.shippingCost = shipCost;
-    q.shippingText = !z ? "" : free ? "Envío gratis" : ZONES[z].title + ": " + money(shipCost);
+    var imm = cartImmediate();
+    var shipCost = z && !free ? zoneInfo(z, imm).cost() : 0;
+    q.zone = z; q.freeShipping = free; q.shippingCost = shipCost; q.immediate = imm;
+    q.shippingText = !z ? "" : free ? "Envío gratis" : zoneInfo(z, imm).title + ": " + money(shipCost);
     q.total = q.productsTotal + shipCost;
     return { lines: ls, pieces: ls.reduce(function (n, l) { return n + l.qty; }, 0), q: q };
   }
@@ -523,6 +561,26 @@
     var set = {};
     p.sabores_inmediata.forEach(function (f) { set[fold(String(f || "").trim())] = 1; });
     return set;
+  }
+  /**
+   * 2.18.13 · ¿Esta pieza es de entrega inmediata? El producto está en mano y, si el dueño marcó
+   * sabores en mano, todos los sabores elegidos lo están.
+   */
+  function lineImmediate(p) {
+    if (!hasStock(p)) return false;
+    var set = inHand(p); if (!set) return true;
+    var fq = flavorQty[p.id] || {}, chosen = Object.keys(fq).filter(function (k) { return fq[k] > 0; });
+    if (chosen.length) return chosen.every(function (f) { return !!set[fold(f)]; });
+    var fl = flavorList(p);
+    return fl.length === 1 ? !!set[fold(fl[0])] : true;
+  }
+  /** Todo el pedido es de entrega inmediata: la entrega local es en menos de 24 h y sin costo. */
+  function cartImmediate() { var ls = lines(); return ls.length > 0 && ls.every(function (x) { return lineImmediate(x.p); }); }
+  /** Datos de cada tipo de envío (la entrega local cambia si todo es de entrega inmediata). */
+  function zoneInfo(k, imm) {
+    var z = ZONES[k]; if (!z) return null;
+    if (k === "local" && imm) return { title: "Entrega inmediata", sub: "En menos de 24 horas · sin costo · en el lugar que elijas", cost: function () { return 0; } };
+    return z;
   }
   function flavorTag(p, f) {
     var set = inHand(p);
@@ -804,6 +862,7 @@
     else if ($("sheet").classList.contains("on")) renderReviewTotals();
   }
   function onAct(e) {
+    if (e.type !== "click") { var bd = e.target.closest && e.target.closest(".bad"); if (bd) unflag(bd); if ($("sheet").classList.contains("on")) setTimeout(updateWait, 0); }
     var ft = e.target.closest("[data-flt]");
     if (ft) { if (e.type === "click") { if (ft.getAttribute("data-flt") === "quick-avail") { fl.avail = !fl.avail; page = 1; renderGrid(); var qb = $("fquick"); if (qb) { qb.setAttribute("aria-pressed", fl.avail ? "true" : "false"); qb.style.background = fl.avail ? "#111" : "#fff"; qb.style.color = fl.avail ? "#fff" : "#111"; qb.style.borderColor = fl.avail ? "#111" : "#d4d4d8"; } } else onFilter(ft, ft.getAttribute("data-flt")); } return; }
     var t = e.target.closest("[data-act]"); if (!t) return;
@@ -858,6 +917,8 @@
         if (k === "cp") { val = val.replace(/\D/g, "").slice(0, 5); if (t.value !== val) t.value = val; }
         contact[k] = val; save();
         if (k === "cp") lookupCP(val);
+        // 2.18.13 · Al corregir un dato se quita el aviso de error.
+        var er = $("err"); if (er && er.textContent) er.innerHTML = "";
       }
       if (act === "pay") pickPay(t.value);
     } else if (e.type === "change" && act === "zone") {
@@ -884,6 +945,21 @@
       if ($("sheet").classList.contains("on")) renderReview();
     }
   }
+  // 2.18.13 · Al tocar fuera de un campo se suelta (se cierra el teclado y ya no queda marcado).
+  document.addEventListener("touchstart", function (e) {
+    var a = document.activeElement;
+    if (!a || !/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.type === "radio" || a.type === "checkbox") return;
+    if (e.target.closest && e.target.closest("input, textarea, select")) return;
+    a.blur();
+  }, { passive: true });
+  // «Siguiente» del teclado: pasa al siguiente campo visible; en el último, cierra el teclado.
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" || !e.target.classList || !e.target.classList.contains("field") || e.target.tagName !== "INPUT") return;
+    e.preventDefault();
+    var all = Array.prototype.filter.call(document.querySelectorAll("#sheetin input.field, #sheetin select.field"), function (x) { return x.offsetParent !== null; });
+    var i = all.indexOf(e.target), nx = all[i + 1];
+    if (nx) nx.focus(); else e.target.blur();
+  });
   var calm = function () { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } };
   document.addEventListener("click", onAct);
   // 2.18.13 · Lo que se abre tocando (foto del producto) también se abre con Enter o espacio.
@@ -977,6 +1053,11 @@
       if (window._shipConfirmed) send();
     } else if (name === "filter") closeFilter();
     else if (name === "detail") closeDetail();
+    else if (name === "step2") {
+      step = 1;
+      if (window._again) return back();
+      renderReview(); $("sheet").scrollTop = 0;
+    }
     else if (name === "sheet") {
       closeSheet();
       if (window._again) { window._again = false; $("sheetin").innerHTML = ""; renderMain(); window.scrollTo(0, 0); }
@@ -1042,6 +1123,21 @@
   swipeToClose($("fsheet"), "y", function () { return document.querySelector("#fsheet .panel"); });
   swipeToClose($("confirm"), "y", function () { return document.querySelector("#confirm .panel"); });
 
+  // 2.18.13 · Enlace a WhatsApp con mensaje (vacío si la tienda no tiene número).
+  function waLink(text) {
+    var wa = String((data && data.catalog && data.catalog.whatsapp) || "").replace(/\D/g, "");
+    if (wa.length < 10) return "";
+    return "https://wa.me/" + (wa.length === 10 ? "52" + wa : wa) + (text ? "?text=" + encodeURIComponent(text) : "");
+  }
+  /** 2.18.13 · Por qué comprar aquí (ficha): original, cambio y pago al recibir. */
+  function trustListHtml() {
+    var row = function (d, html) { return '<li><svg viewBox="0 0 24 24" aria-hidden="true">' + d + "</svg><span>" + html + "</span></li>"; };
+    return '<ul class="card trustlist">' +
+      row('<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/>', "<b>Original y sellado</b>, con su etiqueta de fábrica.") +
+      row('<path d="M4 12a8 8 0 0 1 14-5.3L20 9"/><path d="M20 4v5h-5"/><path d="M20 12a8 8 0 0 1-14 5.3L4 15"/><path d="M4 20v-5h5"/>', "<b>Cambio sin costo</b> si llega dañado o equivocado (avísanos en 48 h).") +
+      row('<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>', "<b>Pagas al recibir</b> con entrega local: efectivo o tarjeta.") + "</ul>";
+  }
+
   // ------------------------------------------------------------ ficha del producto
   function openDetail(id) {
     if (!byId[id]) return;
@@ -1063,14 +1159,18 @@
     var meta = [servingsText(p), p.presentation && p.presentation !== p.servings ? p.presentation : "", p.segment, p.category].filter(function (v, i, a) {
       return v && a.findIndex(function (w) { return w && fold(w) === fold(v); }) === i;
     }).join(" · ");
-    var html = '<div class="top"><button type="button" id="dback"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Catálogo</button><h2>' + esc(p.brand) + "</h2></div>" +
-      '<div class="big">' + (inStock ? '<span class="ribbon">Entrega inmediata</span>' : "") + (u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener" aria-label="Abrir la foto completa"><img src="' + esc(u) + '" alt="' + esc(p.name) + '" data-brand="' + esc(p.brand || "Nova Supps") + '" onerror="this.outerHTML=window._svgFallback(this.dataset.brand)"></a>' : window._svgFallback(p.brand || "Nova Supps")) + "</div>" +
+    // 2.18.13 · Ficha como el mockup: precio por servicio, estado claro, confianza y pregunta por WhatsApp.
+    var wa = waLink("Hola, tengo una duda sobre " + p.name + (p.brand ? " (" + p.brand + ")" : "") + ".");
+    var srv = /^\s*(\d+)\s*(servicios?)?\s*$/i.exec(String(p.servings || "")), perServing = srv && Number(srv[1]) > 1 ? Math.round(yourPrice(p) / Number(srv[1])) : 0;
+    var html = '<div class="top"><button type="button" id="dback"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Catálogo</button><span class="grow"></span>' +
+      (wa ? '<a class="topwa" href="' + esc(wa) + '" target="_blank" rel="noopener" aria-label="Preguntar por este producto en WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.1-5.6A8.4 8.4 0 1 1 21 11.5z"/></svg></a>' : "") + "</div>" +
+      '<div class="big">' + (u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener" aria-label="Abrir la foto completa"><img src="' + esc(u) + '" alt="' + esc(p.name) + '" data-brand="' + esc(p.brand || "Nova Supps") + '" onerror="this.outerHTML=window._svgFallback(this.dataset.brand)"></a>' : window._svgFallback(p.brand || "Nova Supps")) + "</div>" +
       '<div class="card dt" style="margin-top:12px"><div class="brand">' + esc(p.brand) + "</div><h2>" + esc(p.name) + "</h2>" +
       (meta ? '<div class="meta" style="white-space:normal">' + esc(meta) + "</div>" : "") +
-      '<div class="price" style="margin-top:10px"><b>' + money(yourPrice(p)) + "</b>" + (off ? "<s>" + money(p.price) + "</s>" : "") + "</div>" +
+      '<div class="price" style="margin-top:10px"><b>' + money(yourPrice(p)) + "</b>" + (off ? "<s>" + money(p.price) + "</s>" : "") + (perServing ? '<small class="per">' + money(perServing) + " por servicio</small>" : "") + "</div>" +
       (off ? '<span class="badge">Nivel ' + esc(link().tier_name) + " · " + bpsLabel(tierBps()) + " aplicado</span>" : "") +
       (limited() && p.avail != null ? '<div class="stock" style="margin-top:8px">' + (max > 0 ? "Disponibles: " + max : "Agotado") + "</div>" : "") +
-      (inStock ? "" : onOrder(p) ? '<div class="stock" style="margin-top:8px">Sobre pedido</div>' : '<div class="meta" style="margin-top:8px;white-space:normal">Entrega en 1 a 5 días hábiles, según disponibilidad</div>') +
+      (inStock ? '<div class="status ok">Entrega inmediata · en menos de 24 h</div>' : onOrder(p) ? '<div class="status warn">Sobre pedido · 1 a 5 días hábiles</div>' : '<div class="status">Entrega en 1 a 5 días hábiles, según disponibilidad</div>') +
       "</div>";
     if (list.length > 1) {
       html += '<div class="card" id="flv-card"><p class="sec" style="margin-top:0">Elige sabores *</p>' + list.map(function (f, i) {
@@ -1088,20 +1188,27 @@
         '<p class="sec" style="margin:12px 0 8px">Cantidad</p>' + (max > 0 || n ? '<div class="step"><button type="button" data-act="minus" data-id="' + esc(p.id) + '" aria-label="Quitar uno de ' + esc(p.name) + '">−</button>' +
           '<input inputmode="numeric" data-act="qty" data-id="' + esc(p.id) + '" value="' + n + '" aria-label="Cantidad de ' + esc(p.name) + '"><button class="plus" type="button" data-act="plus" data-id="' + esc(p.id) + '" aria-label="Agregar uno de ' + esc(p.name) + '">+</button></div>' : '<button class="add" type="button" disabled>Agotado</button>') + "</div>";
     }
+    html += trustListHtml();
     // 2.18.11 · Cómo se toma: solo llega si el dueño lo aprobó en la app.
     var howto = String(p.modo_uso || "").trim();
     if (howto) html += '<div class="card howto"><h3>Cómo se toma</h3><p>' + esc(howto) + '</p><small>Sigue siempre las indicaciones de la etiqueta del producto.</small></div>';
-    html += '<button class="cta full" type="button" id="dok">' + (n ? "Listo · " + plural(n, "pieza", "piezas") + " · " + money(yourPrice(p) * n) : "Volver al catálogo") + "</button>";
+    if (wa) html += '<a class="ask" href="' + esc(wa) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.1-5.6A8.4 8.4 0 1 1 21 11.5z"/></svg>¿Dudas con este producto? Pregúntanos</a>';
+    html += '<p class="legal">Los suplementos alimenticios no son medicamentos. El consumo de este producto es responsabilidad de quien lo recomienda y de quien lo usa.</p>';
+    var canAdd = max > 0;
+    html += '<div class="dfoot"><button class="cta full" type="button" id="dok"' + (!n && !canAdd ? " disabled" : "") + ">" +
+      (n ? "Listo · " + plural(n, "pieza", "piezas") + " · " + money(yourPrice(p) * n) : canAdd ? "Agregar al pedido · " + money(yourPrice(p)) : "Agotado") + "</button></div>";
     $("detailin").innerHTML = html;
     $("dback").onclick = back;
     $("dok").onclick = function () {
+      if (!cart[p.id] && list.length > 1) { toast("Elige el sabor que quieres", "flavor"); pulseFlavors(); return; }
+      if (!cart[p.id]) setQty(p.id, 1, "qty");
       if (missingFlavor(p.id)) { toast("Por favor selecciona un sabor", "flavor"); pulseFlavors(); return; }
       back();
     };
   }
 
   // ------------------------------------------------------------ revisar y mandar
-  function openSheet() { if (!$("sheet").classList.contains("on")) pushLayer("sheet"); $("sheet").classList.add("on"); document.body.classList.add("lock"); $("sheet").scrollTop = 0; renderReview(); }
+  function openSheet() { if (!$("sheet").classList.contains("on")) { pushLayer("sheet"); step = 1; } $("sheet").classList.add("on"); document.body.classList.add("lock"); $("sheet").scrollTop = 0; renderReview(); }
   function closeSheet() { resetDrag($("sheet")); $("sheet").classList.remove("on"); document.body.classList.remove("lock"); renderGrid(); renderBar(); }
   /** 2.17.3 · Primer producto al que le falta elegir sabor (o ''). */
   function firstMissingFlavor() { var l = lines().filter(function (x) { return missingFlavor(x.p.id); })[0]; return l ? l.p.id : ""; }
@@ -1121,8 +1228,8 @@
           return '<label class="opt' + (on ? " on" : "") + '"><input type="radio" name="freemode" data-act="freemode" value="' + o[0] + '"' + (on ? " checked" : "") + "><span>" + o[1] + "<small>" + o[2] + "</small></span></label>";
         }).join("") + "</div>" + (contact.freeMode === "local" ? lugaresHtml() : "")
       : Object.keys(ZONES).map(function (k) {
-          var z = ZONES[k], on = contact.zone === k;
-          return '<label class="pay ship' + (on ? " on" : "") + '"><input type="radio" name="zone" data-act="zone" value="' + k + '"' + (on ? " checked" : "") + "><span>" + esc(z.title) + "<small>" + esc(z.sub) + '</small></span><b class="zp">+' + pesos(z.cost()) + " MXN</b></label>" +
+          var z = zoneInfo(k, q.immediate), on = contact.zone === k, cost = z.cost();
+          return '<label class="pay ship' + (on ? " on" : "") + '"><input type="radio" name="zone" data-act="zone" value="' + k + '"' + (on ? " checked" : "") + "><span>" + esc(z.title) + "<small>" + esc(z.sub) + '</small></span><b class="zp">' + (cost ? "+" + pesos(cost) + " MXN" : "Sin costo") + "</b></label>" +
             (k === "local" && on ? lugaresHtml() : "");
         }).join("");
     // Pago al entregar solo con entrega local.
@@ -1139,7 +1246,7 @@
   /** 2.17.6 · Entrega estimada según el envío elegido. */
   function deliveryEta(q) {
     var m = deliveryMode(q);
-    return m === "local" ? "Menos de 72 horas hábiles · entrega sujeta a disponibilidad" : m === "paqueteria" ? "3 a 5 días hábiles después de confirmar tu pago" : DELIVERY;
+    return m === "local" ? (q.immediate ? "Inmediata · en menos de 24 horas" : "Menos de 72 horas hábiles · entrega sujeta a disponibilidad") : m === "paqueteria" ? "3 a 5 días hábiles después de confirmar tu pago" : DELIVERY;
   }
   /**
    * 2.17.6 · Barra de beneficios: las metas de descuento por volumen y el envío gratis en una sola
@@ -1169,85 +1276,123 @@
   }
   function renderReviewTotals() {
     var t = totals(), q = t.q, c = data.catalog, el = $("totals");
-    if (!el) return;
     var below = c.minOrder && q.subtotal < c.minOrder;
-    var bene = $("benefits"); if (bene) bene.innerHTML = benefitsHtml(q);
+    // 2.18.13 · La barra de descuentos por volumen solo desde $2,500 (con pedidos chicos no ayuda).
+    var bene = $("benefits"); if (bene) bene.innerHTML = q.subtotal >= 250000 ? benefitsHtml(q) : "";
+    var addr = $("addr-card"); if (addr) addr.hidden = deliveryMode(q) !== "paqueteria";
+    var nx = $("next"); if (nx) nx.textContent = "Continuar · " + money(q.total);
+    setTimeout(updateWait, 0);
+    if (!el) { renderShipping(t); var inf = $("sheetinfo"); if (inf) inf.textContent = plural(t.pieces, "pieza", "piezas") + " · " + plural(t.lines.length, "producto", "productos"); return; }
     var mode = deliveryMode(q);
     var shipLabel = q.freeShipping ? "Envío gratis" + (mode === "local" ? " · local" : mode === "paqueteria" ? " · paquetería" : "")
-      : q.zone ? ZONES[q.zone].title : "Envío";
+      : q.zone ? zoneInfo(q.zone, q.immediate).title : "Envío";
     var place = mode === "local" && contact.lugar ? "<small>" + esc(contact.lugar) + "</small>" : "";
     el.innerHTML =
       '<div class="row"><span>Subtotal · ' + plural(t.pieces, "pieza", "piezas") + "</span><b>" + money(q.subtotal) + "</b></div>" +
       (q.tierDiscount ? '<div class="row off"><span>Nivel ' + esc(link().tier_name) + " (" + bpsLabel(q.tierBps) + ")</span><b>−" + money(q.tierDiscount) + "</b></div>" : "") +
       (q.volumeDiscount ? '<div class="row off"><span>Descuento por volumen (' + bpsLabel(q.volumeBps) + ")</span><b>−" + money(q.volumeDiscount) + "</b></div>" : "") +
       (q.floorLimited ? '<div class="note warn">Algunos productos ya están en su precio mínimo: el descuento se ajustó.</div>' : "") +
-      '<div class="row"><span>' + esc(shipLabel) + place + "</span><b" + (q.zone ? "" : ' class="muted"') + ">" + (q.freeShipping ? "Gratis" : q.zone ? money(q.shippingCost) : "Elige arriba") + "</b></div>" +
+      '<div class="row"><span>' + esc(shipLabel) + place + "</span><b" + (q.zone ? "" : ' class="muted"') + ">" + (q.freeShipping || (q.zone && !q.shippingCost) ? "Sin costo" : q.zone ? money(q.shippingCost) : "Elige arriba") + "</b></div>" +
       '<div class="row"><span>Entrega estimada</span><b>' + esc(deliveryEta(q)) + "</b></div>" +
       '<div class="row total"><span>Total a pagar</span><b>' + money(q.total) + "</b></div>" +
       (below ? '<div class="note bad">El pedido mínimo es de ' + money(c.minOrder) + " (subtotal).</div>" : "");
     renderShipping(t);
     var btn = $("send");
-    if (btn) btn.disabled = sending || !t.pieces || !!below || !window._termsAccepted;
+    if (btn) btn.disabled = sending || !t.pieces || !!below;
     var info = $("sheetinfo");
     if (info) info.textContent = plural(t.pieces, "pieza", "piezas") + " · " + plural(t.lines.length, "producto", "productos");
   }
+  // 2.18.13 · Tu pedido en dos pasos (mockups 4 y 5): 1) productos, cómo lo recibes y tus datos;
+  // 2) cómo pagas, resumen, términos y enviar. Con entrega local solo se elige el lugar (sin dirección).
+  var step = 1;
+  var CHEV_L = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
   function renderReview() {
     var t = totals(), l = link();
-    var html = '<div class="top"><button type="button" id="back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Catálogo</button><h2>Tu pedido</h2></div>';
     if (!t.pieces) {
-      html += '<div class="card"><div class="empty">Aún no eliges productos.</div><button class="ghost" type="button" id="back2">Ver catálogo</button></div>';
-      $("sheetin").innerHTML = html;
+      step = 1;
+      $("sheetin").innerHTML = '<div class="top"><button type="button" id="back">' + CHEV_L + 'Catálogo</button><h2>Tu pedido</h2></div>' +
+        '<div class="card"><div class="empty">Aún no eliges productos.</div><button class="ghost" type="button" id="back2">Ver catálogo</button></div>';
       $("back").onclick = back; $("back2").onclick = back;
       return;
     }
+    if (step === 2) return renderPay(t, l);
+    // 2.18.13 · Todo de entrega inmediata: ya queda elegida la entrega local (sin costo) con los lugares a la vista.
+    if (t.q.immediate && !t.q.freeShipping && !contact.zone) { contact.zone = "local"; lugarOpen = !contact.lugar; t = totals(); }
+    if (t.q.immediate && t.q.freeShipping && !contact.freeMode) { contact.freeMode = "local"; lugarOpen = !contact.lugar; t = totals(); }
+    var html = '<div class="top"><button type="button" id="back">' + CHEV_L + 'Catálogo</button><h2>Tu pedido</h2></div>';
     html += '<div class="card"><p class="sub" id="sheetinfo"></p>' + t.lines.map(function (x) {
       var p = x.p;
-      return '<div class="line"><div class="ph open" data-act="open" data-id="' + esc(p.id) + '">' + photo(p) + '</div><div class="t open" data-act="open" data-id="' + esc(p.id) + '"><div>' + esc(p.name) + "</div><span>" + esc(p.brand) + " · " + money(yourPrice(p)) + " c/u" + (missingFlavor(p.id) ? ' · <em class="miss">Elige sabor</em>' : noteFor(p.id) ? " · " + esc(noteFor(p.id)) : manyFlavors(p) ? " · Elegir sabores" : "") + "</span></div>" +
-        '<div class="step"><button type="button" data-act="minus" data-id="' + esc(p.id) + '" aria-label="Quitar uno de ' + esc(p.name) + '">−</button>' + (needsFlavor(p) ? '<input readonly tabindex="-1" data-act="open" data-id="' + esc(p.id) + '" value="' + x.qty + '" aria-label="Cantidad de ' + esc(p.name) + '">' : '<input inputmode="numeric" data-act="qty" data-id="' + esc(p.id) + '" value="' + x.qty + '" aria-label="Cantidad de ' + esc(p.name) + '">') + '<button class="plus" type="button" data-act="plus" data-id="' + esc(p.id) + '" aria-label="Agregar uno de ' + esc(p.name) + '">+</button></div></div>';
+      return '<div class="line"><div class="ph open" data-act="open" data-id="' + esc(p.id) + '">' + photo(p) + '</div><div class="t open" data-act="open" data-id="' + esc(p.id) + '"><div>' + esc(p.name) + "</div><span>" + esc(p.brand) + " · " + money(yourPrice(p)) + " cada uno" + (missingFlavor(p.id) ? ' · <em class="miss">Elige sabor</em>' : noteFor(p.id) ? " · " + esc(noteFor(p.id)) : manyFlavors(p) ? " · Elegir sabores" : "") + "</span></div>" +
+        '<div class="step"><button type="button" data-act="minus" data-id="' + esc(p.id) + '" aria-label="Quitar uno de ' + esc(p.name) + '">−</button>' + (needsFlavor(p) ? '<input readonly tabindex="-1" data-act="open" data-id="' + esc(p.id) + '" value="' + x.qty + '" aria-label="Cantidad de ' + esc(p.name) + '">' : '<input inputmode="numeric" data-act="qty" data-id="' + esc(p.id) + '" value="' + x.qty + '" aria-label="Cantidad de ' + esc(p.name) + '">') +
+        '<button class="plus" type="button" data-act="plus" data-id="' + esc(p.id) + '" aria-label="Agregar uno de ' + esc(p.name) + '">+</button></div></div>';
     }).join("") + '<div id="benefits"></div></div>';
-    if (l.general) {
-      html += '<div class="card"><p class="sec" style="margin-top:0">Tus datos</p>' +
-        field("name", "Tu nombre *", "text", "name") + field("business", "Negocio o gimnasio", "text", "organization") +
-        field("phone", "WhatsApp (10 dígitos) *", "tel", "tel") + field("email", "Correo (opcional)", "email", "email") + "</div>";
-    }
-    // 2.15.4 · Dirección de entrega por partes y forma de pago (se guardan con el pedido en la app).
+    html += '<h3 class="sec">¿Cómo lo recibes?</h3><div class="card"><div id="zones"></div></div>';
+    // Dirección: solo con paquetería (la entrega local es en un punto de la lista).
     var req = l.general ? " *" : "";
-    // 2.17.2 · Dirección: primero el C.P. (catálogo de SEPOMEX en Supabase): llena estado y ciudad y
-    // muestra sus colonias para elegir. Calle, número e interior se escriben.
-    html += '<div class="card"><p class="sec" style="margin-top:0">Dirección de entrega</p>' +
-      (l.general ? "" : '<p class="hint">Si la dejas vacía, entregamos en la dirección que tenemos registrada.</p>') +
+    html += '<div id="addr-card"' + (deliveryMode(t.q) === "paqueteria" ? "" : " hidden") + '><h3 class="sec">¿A dónde te lo enviamos?</h3><div class="card">' +
+      (l.general ? "" : '<p class="hint" style="margin-top:0">Si la dejas vacía, enviamos a la dirección que tenemos registrada.</p>') +
       '<label for="c-cp">Código postal' + req + '</label><input class="field cpfield" id="c-cp" type="text" inputmode="numeric" autocomplete="postal-code" data-act="contact" data-k="cp" maxlength="5" placeholder="5 dígitos" value="' + esc(contact.cp || "") + '">' +
       '<p class="hint" id="cp-hint" aria-live="polite"></p>' +
       '<div id="col-box"></div>' +
       '<div class="two2"><div>' + field("city", "Ciudad o municipio" + req, "text", "address-level2") + '</div><div><label for="c-state">Estado' + req + '</label><select class="field" id="c-state" data-act="contact" data-k="state"><option value="">Elegir</option>' +
       STATES.map(function (st) { return '<option' + (contact.state === st ? " selected" : "") + ">" + esc(st) + "</option>"; }).join("") + "</select></div></div>" +
       field("street", "Calle y número" + req, "text", "address-line1", "", 120, "Ej. Av. Juárez 120") +
-      field("addr2", "Interior y referencias (opcional)", "text", "address-line2", "", 120, "Ej. Int. 3, portón negro") + "</div>" +
-      '<div class="card"><p class="sec" style="margin-top:0">Envío *</p><div id="zones"></div></div>' +
-      '<div class="card"><p class="sec" style="margin-top:0">Forma de pago *</p>' + PAYS.map(function (o) {
+      field("addr2", "Interior y referencias (opcional)", "text", "address-line2", "", 120, "Ej. Int. 3, portón negro") + "</div></div>";
+    if (l.general) {
+      html += '<h3 class="sec">Tus datos</h3><div class="card">' +
+        field("name", "Tu nombre *", "text", "name", "", 120, "Ej. Ana López") + field("phone", "Tu WhatsApp (10 dígitos) *", "tel", "tel", "numeric", 20, "10 dígitos") +
+        // 2.18.13 · El correo es obligatorio: ahí llegan la liga de pago y el seguimiento del pedido.
+        field("email", "Tu correo *", "email", "email", "email", 120, "nombre@correo.com") +
+        '<p class="hint">Ahí te mandamos la liga de pago y el seguimiento de tu pedido.</p>' +
+        '<details class="more"' + (contact.business ? " open" : "") + '><summary>¿Compras para un gimnasio o negocio? (opcional)</summary>' +
+        field("business", "Negocio o gimnasio", "text", "organization") + "</details></div>";
+    }
+    html += '<div id="err" style="margin-top:12px"></div><button class="cta full" type="button" id="next">Continuar</button>';
+    $("sheetin").innerHTML = html;
+    $("back").onclick = back;
+    $("next").onclick = goPay;
+    renderReviewTotals();
+    renderColonias();
+    if (contact.cp) { cpAsked = ""; lookupCP(contact.cp); } else cpHint("Escribe tu código postal para ver tus colonias.");
+  }
+  /** Paso 1 → 2: revisa lo del paso 1 y pasa a «¿Cómo pagas?» (el «atrás» del teléfono regresa). */
+  function goPay() {
+    var t = totals(), l = link();
+    var missF = firstMissingFlavor();
+    if (missF) { openDetail(missF); toast("Por favor selecciona un sabor", "flavor"); pulseFlavors(); return; }
+    var m = missing1();
+    if (m && m.lugar && !lugarOpen) { lugarOpen = true; renderReviewTotals(); m = missing1(); }
+    if (m) return guide(m);
+    step = 2; pushLayer("step2"); renderReview(); $("sheet").scrollTop = 0;
+  }
+  function renderPay(t, l) {
+    var html = '<div class="top"><button type="button" id="back">' + CHEV_L + 'Entrega</button><h2>Tu pedido</h2></div>';
+    html += '<h3 class="sec" style="margin-top:4px">¿Cómo pagas?</h3><div class="card">' + PAYS.map(function (o) {
         return '<label class="pay' + (contact.pay === o[0] ? " on" : "") + '"><input type="radio" name="pay" data-act="pay" value="' + o[0] + '"' + (contact.pay === o[0] ? " checked" : "") + "><span>" + esc(o[1]) + "<small>" + esc(o[2]) + "</small></span></label>";
-      }).join("") + "</div>";
-    html += '<div class="card"><label for="notes" style="margin-top:0">Comentarios (opcional)</label><textarea class="field" id="notes" data-act="notes" maxlength="600" placeholder="Ej. entregar por la tarde, factura, etc.">' + esc(notes) + "</textarea></div>" +
-      '<div class="card summary"><p class="sec" style="margin-top:0">Resumen de pago</p><div id="totals"></div></div>' +
-      '<div class="card terms"><p class="sec" style="margin-top:0">Términos y condiciones</p>' + termsHtml() + "</div>" +
-      '<label style="display:flex;align-items:center;gap:10px;margin:14px 0 12px;cursor:pointer;font-size:14px;font-weight:700;color:var(--ink)"><input type="checkbox" id="termsAccept" required style="width:18px;height:18px;accent-color:var(--ink);cursor:pointer;flex:0 0 auto"><span>Acepto los Términos y Condiciones y el <a href="privacidad.html" target="_blank" rel="noopener" style="color:inherit">Aviso de privacidad</a></span></label><div id="err"></div><button class="cta full" type="button" id="send">Enviar pedido</button>' +
-      '<p style="text-align:center;color:var(--muted);font-size:13px;margin-top:10px">Los precios se confirman en tu orden de compra.</p>';
+      }).join("") + "</div>" +
+      '<div class="card"><label for="notes" style="margin-top:0">Comentarios (opcional)</label><textarea class="field" id="notes" data-act="notes" maxlength="600" placeholder="Ej. paso después de las 7 pm, necesito factura…">' + esc(notes) + "</textarea></div>" +
+      '<h3 class="sec">Resumen</h3><div class="card summary"><div id="totals"></div></div>' +
+      '<ul class="trust2">' +
+      '<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg><span>Originales y sellados. Cambio sin costo si llega dañado o equivocado.</span></li>' +
+      '<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.1-5.6A8.4 8.4 0 1 1 21 11.5z"/></svg><span>No se cobra nada ahora: te confirmamos existencia y total por WhatsApp.</span></li></ul>' +
+      '<div class="card terms"><h3 class="tt">Términos del pedido</h3><ul class="tsum">' +
+      "<li>Entrega inmediata: menos de 24 h y sin costo. Entrega local: menos de 72 h hábiles, sujeta a disponibilidad. Paquetería: 3 a 5 días hábiles después de tu pago.</li>" +
+      "<li>Revisa tu pedido al recibirlo: faltantes o daños, avísanos en 48 h con foto.</li>" +
+      "<li>No aceptamos devoluciones de productos abiertos o sin sello.</li></ul>" +
+      '<details class="more"><summary>Ver términos completos</summary>' + termsHtml() + "</details></div>" +
+      '<label class="accept"><input type="checkbox" id="termsAccept" required><span>Acepto los términos y el <a href="privacidad.html" target="_blank" rel="noopener">aviso de privacidad</a></span></label>' +
+      '<div id="err"></div><button class="cta full" type="button" id="send">Enviar pedido</button>';
     $("sheetin").innerHTML = html;
     $("back").onclick = back;
     $("send").onclick = send;
     // 2.15.4 · «Enviar pedido» se activa solo al aceptar los Términos y Condiciones.
-    if ($("termsAccept")) {
-      $("termsAccept").checked = !!window._termsAccepted;
-      $("send").disabled = !window._termsAccepted;
-      $("termsAccept").onchange = function () { window._termsAccepted = !!this.checked; renderReviewTotals(); if (window._termsAccepted && $("err")) $("err").innerHTML = ""; };
-    }
+    $("termsAccept").checked = !!window._termsAccepted;
+    $("termsAccept").onchange = function () { window._termsAccepted = !!this.checked; renderReviewTotals(); if (window._termsAccepted && $("err")) $("err").innerHTML = ""; };
     renderReviewTotals();
-    renderColonias();
-    if (contact.cp) { cpAsked = ""; lookupCP(contact.cp); } else cpHint("Escribe tu código postal para ver tus colonias.");
     mountTurnstile();
   }
   function field(k, label, type, auto, mode, max, ph) {
-    return '<label for="c-' + k + '">' + label + '</label><input class="field" id="c-' + k + '" type="' + type + '" autocomplete="' + (auto || "off") + '"' + (mode ? ' inputmode="' + mode + '"' : "") + ' data-act="contact" data-k="' + k + '" maxlength="' + (max || 120) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : "") + ' value="' + esc(contact[k] || "") + '">';
+    return '<label for="c-' + k + '">' + label + '</label><input class="field" enterkeyhint="next" id="c-' + k + '" type="' + type + '" autocomplete="' + (auto || "off") + '"' + (mode ? ' inputmode="' + mode + '"' : "") + ' data-act="contact" data-k="' + k + '" maxlength="' + (max || 120) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : "") + ' value="' + esc(contact[k] || "") + '">';
   }
   // ------------------------------------------------------------ 2.17.2 · código postal → colonias
   var cpCache = {}, cpData = null, cpAsked = "";
@@ -1306,7 +1451,7 @@
     return "<ol>" +
       li("Precios y existencias.", "Precios en pesos mexicanos. Tu pedido es una solicitud: confirmamos existencia, precio final y total a pagar en tu orden de compra por WhatsApp (" + esc(wa) + ") antes de cualquier cobro. Respondemos el mismo día hábil; los pedidos que llegan después de las 18:00 h o en fin de semana se confirman el siguiente día hábil.") +
       li("Tiempo de entrega.", "De 1 a 5 días hábiles según la disponibilidad de cada producto en almacén. Son días hábiles de lunes a viernes, sin días festivos; los pedidos confirmados después de las 18:00 h o en fin de semana cuentan desde el siguiente día hábil. Si un producto es sobre pedido y tarda más, te avisamos antes de surtir.") +
-      li("Envío local (" + pesos(envioLocal()) + ").", "Entrega en menos de 72 horas hábiles, sujeta a disponibilidad del producto en almacén, en uno de estos lugares: " + lugares().join(", ") + ". Te confirmamos día y hora por WhatsApp.") +
+      li("Envío local (" + pesos(envioLocal()) + ").", "Si todo tu pedido es de entrega inmediata, se entrega en menos de 24 horas y sin costo. Si no, en menos de 72 horas hábiles, sujeta a disponibilidad del producto en almacén. Se entrega en uno de estos lugares: " + lugares().join(", ") + ". Te confirmamos día y hora por WhatsApp.") +
       li("Envío por paquetería (" + pesos(envioForaneo()) + ").", "A todo México, de 3 a 5 días hábiles a partir de que se confirma tu pago. El tiempo de la paquetería puede variar en zonas extendidas.") +
       li("Envío sin costo.", "En pedidos con subtotal de productos desde " + pesos(envioGratis()) + ", local o por paquetería. Gimnasios con pedidos desde $15,000: entrega directa en sus instalaciones dentro de la cobertura local.") +
       li("Descuentos por volumen.", "Sobre el subtotal de productos: 3 % desde $5,000, 8.5 % desde $10,001 y 15 % desde $15,001. No se acumulan con otras promociones. Cada producto tiene un precio mínimo: si un descuento lo rebasa, se ajusta y lo verás en tu resumen. El envío no tiene descuento.") +
@@ -1326,16 +1471,62 @@
   ];
   var ADDR = ["street", "col", "addr2", "city", "cp", "state"];
   /** Revisa la dirección: obligatoria con el enlace general; con el personal, completa si se llena. */
-  function addressError(general) {
+  function addressError(general) { var m = addressMissing(general); return m ? m[1] : ""; }
+  /** 2.18.13 · [campo, mensaje] del primer dato de la dirección que falta (o null). */
+  function addressMissing(general) {
     var v = function (k) { return String(contact[k] || "").trim(); };
     var any = ADDR.some(function (k) { return v(k); });
-    if (!general && !any) return "";
-    if (!/^\d{5}$/.test(v("cp"))) return "Escribe el código postal de la entrega (5 dígitos).";
-    if (v("col").length < 2) return "Elige o escribe la colonia de la entrega.";
-    if (v("city").length < 2) return "Escribe la ciudad o municipio de la entrega.";
-    if (!v("state")) return "Elige el estado de la entrega.";
-    if (v("street").length < 3) return "Escribe la calle y el número de la entrega.";
-    return "";
+    if (!general && !any) return null;
+    if (!/^\d{5}$/.test(v("cp"))) return ["cp", "Escribe el código postal (5 dígitos)."];
+    if (v("col").length < 2) return ["col", "Elige o escribe tu colonia."];
+    if (v("city").length < 2) return ["city", "Escribe tu ciudad o municipio."];
+    if (!v("state")) return ["state", "Elige tu estado."];
+    if (v("street").length < 3) return ["street", "Escribe la calle y el número."];
+    return null;
+  }
+  // ---- 2.18.13 · Obligatorios: el botón se ve inactivo y, al tocarlo, te lleva a lo que falta.
+  /** Lo que falta del paso 1 (sin tocar nada): { el, msg, lugar }. */
+  function missing1() {
+    var t = totals(), l = link(), zc = $("zones") && $("zones").closest(".card");
+    if (!t.q.freeShipping && !t.q.zone) return { el: zc, msg: "Elige cómo lo recibes: entrega local o paquetería." };
+    if (t.q.freeShipping && !contact.freeMode) return { el: zc, msg: "Elige cómo lo recibes: entrega local o paquetería." };
+    if (deliveryMode(t.q) === "local" && lugares().indexOf(contact.lugar) < 0) return { el: document.querySelector("#zones .lugar") || zc, msg: "Elige dónde te lo entregamos.", lugar: true };
+    if (deliveryMode(t.q) === "paqueteria") {
+      var a = addressMissing(l.general);
+      if (a) return { el: a[0] === "col" ? ($("c-col") || $("col-box")) : $("c-" + a[0]), msg: a[1] };
+    }
+    if (l.general) {
+      if (String(contact.name || "").trim().length < 2) return { el: $("c-name"), msg: "Escribe tu nombre." };
+      if (String(contact.phone || "").replace(/\D/g, "").length < 10) return { el: $("c-phone"), msg: "Escribe tu WhatsApp a 10 dígitos." };
+      if (!emailOk(contact.email)) return { el: $("c-email"), msg: String(contact.email || "").trim() ? "Revisa tu correo: debe ser como nombre@correo.com." : "Escribe tu correo: ahí te llegan la liga de pago y el seguimiento." };
+    }
+    return null;
+  }
+  /** Lo que falta del paso 2. */
+  function missing2() {
+    var t = totals(), pc = document.querySelector('input[name="pay"]'); pc = pc && pc.closest(".card");
+    if (!contact.pay) return { el: pc, msg: "Elige cómo vas a pagar." };
+    if (COD.indexOf(contact.pay) >= 0 && !codAllowed(t.q)) return { el: pc, msg: "Con paquetería el pago es por adelantado: elige tarjeta en línea o transferencia." };
+    if (!window._termsAccepted) return { el: document.querySelector(".accept"), msg: "Acepta los términos para enviar tu pedido." };
+    return null;
+  }
+  var emailOk = function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v || "").trim()); };
+  function unflag(el) { if (!el) return; el.classList.remove("bad"); if (el._ferr && el._ferr.parentNode) el._ferr.parentNode.removeChild(el._ferr); el._ferr = null; }
+  /** Marca en rojo lo que falta, dice qué es y te lleva ahí (con el cursor si es un campo). */
+  function guide(m) {
+    Array.prototype.forEach.call(document.querySelectorAll("#sheetin .bad"), unflag);
+    var e = $("err"); if (e) e.innerHTML = "";
+    var el = m && m.el; if (!el) return showErr(m ? m.msg : "Revisa tu pedido.");
+    el.classList.add("bad");
+    var msg = document.createElement("p"); msg.className = "ferr"; msg.setAttribute("role", "alert"); msg.textContent = m.msg;
+    if (el.classList.contains("card")) el.insertBefore(msg, el.firstChild); else el.parentNode.insertBefore(msg, el.nextSibling);
+    el._ferr = msg;
+    try { el.scrollIntoView({ block: "center", behavior: calm() ? "auto" : "smooth" }); } catch (x) {}
+    if (/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) setTimeout(function () { try { el.focus({ preventScroll: true }); } catch (x) { el.focus(); } }, 250);
+  }
+  function updateWait() {
+    var b1 = $("next"); if (b1) b1.classList.toggle("wait", !!missing1());
+    var b2 = $("send"); if (b2) b2.classList.toggle("wait", !!missing2());
   }
   function pickPay(v) {
     contact.pay = v;
@@ -1348,12 +1539,13 @@
     if (!t.pieces || sending) return;
     var missF = firstMissingFlavor();
     if (missF) { openDetail(missF); toast("Por favor selecciona un sabor", "flavor"); pulseFlavors(); return; }
-    if (!$("termsAccept") || !$("termsAccept").checked) return showErr("Debes aceptar los Términos y Condiciones para confirmar el pedido.");
+    var m2 = missing2(); if (m2) return guide(m2);
     if (l.general) {
       if (String(contact.name || "").trim().length < 2) return showErr("Escribe tu nombre.");
       if (String(contact.phone || "").replace(/\D/g, "").length < 10) return showErr("Escribe tu WhatsApp a 10 dígitos.");
+      if (!emailOk(contact.email)) return showErr("Escribe tu correo: ahí te llegan la liga de pago y el seguimiento.");
     }
-    var addrErr = addressError(l.general);
+    var addrErr = deliveryMode(t.q) === "paqueteria" ? addressError(l.general) : "";
     if (addrErr) return showErr(addrErr);
     if (!t.q.freeShipping && !t.q.zone) return showErr("Elige el tipo de envío: local o por paquetería.");
     if (t.q.freeShipping && !contact.freeMode) return showErr("Elige cómo recibes tu pedido: por paquetería o envío local.");
@@ -1385,7 +1577,7 @@
     var dirTag = ADDR.some(function (k) { return String(contact[k] || "").trim(); })
       ? "[dir:" + ["street", "col", "addr2", "city", "state", "cp"].map(function (k) { return String(contact[k] || "").replace(/[\]~|]/g, " ").trim(); }).join("~") + "]"
       : "";
-    var totalBps = (t.q.tierBps || 0) + (t.q.volumeBps || 0); var discPct = totalBps ? (totalBps / 100) : 0; var discAmt = (t.q.tierDiscount || 0) + (t.q.volumeDiscount || 0); var dm = deliveryMode(t.q); var zoneLbl = (t.q.freeShipping ? "Envío gratis " + (dm === "local" ? "local" : "por paquetería") + " (pedido desde " + money(envioGratis()) + ")" : ZONES[dm] ? ZONES[dm].title + " (" + ZONES[dm].sub.split(" · ")[0] + ")" : "") + (dm === "local" && contact.lugar ? " · Lugar de entrega: " + contact.lugar : "");
+    var totalBps = (t.q.tierBps || 0) + (t.q.volumeBps || 0); var discPct = totalBps ? (totalBps / 100) : 0; var discAmt = (t.q.tierDiscount || 0) + (t.q.volumeDiscount || 0); var dm = deliveryMode(t.q); var zoneLbl = (t.q.freeShipping ? "Envío gratis " + (dm === "local" ? "local" : "por paquetería") + " (pedido desde " + money(envioGratis()) + ")" : zoneInfo(dm, t.q.immediate) ? zoneInfo(dm, t.q.immediate).title + " (" + zoneInfo(dm, t.q.immediate).sub.split(" · ")[0] + ")" : "") + (dm === "local" && contact.lugar ? " · Lugar de entrega: " + contact.lugar : "");
     var envTag = "[envio:" + (dm === "local" || dm === "paqueteria" ? dm : "") + "~" + (dm === "local" ? String(contact.lugar || "").replace(/[\]~|\[]/g, " ").trim() : "") + "~" + (t.q.freeShipping ? 0 : Math.round(t.q.shippingCost || 0)) + "~" + (t.q.freeShipping ? 1 : 0) + "]";
     var body = {
       p_token: token,
@@ -1413,10 +1605,12 @@
     sendOrder(body).then(done).catch(function () { done(null); });
   }
   function openConfirm(t) {
-    var q = t.q, z = ZONES[q.zone], box = $("confirm");
+    var q = t.q, z = zoneInfo(q.zone, q.immediate), box = $("confirm");
     var row = function (a, b, cls) { return '<div class="row' + (cls ? " " + cls : "") + '"><span>' + a + "</span><b>" + b + "</b></div>"; };
     var mode = deliveryMode(q);
-    var shipNote = mode === "local"
+    var shipNote = mode === "local" && q.immediate
+      ? "<b>Entrega inmediata sin costo:</b> en <b>" + esc(contact.lugar || "el lugar elegido") + "</b>, en menos de 24 horas. Te confirmamos la hora por WhatsApp."
+      : mode === "local"
       ? "<b>" + (q.freeShipping ? "Envío local gratis" : "Envío local") + ":</b> en <b>" + esc(contact.lugar || "el lugar elegido") + "</b>, en menos de 72 horas hábiles, entrega sujeta a disponibilidad del producto en almacén. Te confirmamos día y hora por WhatsApp."
       : "<b>" + (q.freeShipping ? "Envío gratis por paquetería" : "Envío por paquetería") + ":</b> de 3 a 5 días hábiles a partir de que se confirma tu pago (por adelantado: tarjeta en línea o transferencia).";
     box.innerHTML = '<div class="dim" data-cf="no"></div><div class="panel" role="dialog" aria-modal="true" aria-labelledby="cf-t"><div class="handle"></div>' +
@@ -1426,11 +1620,11 @@
       row("Subtotal", money(q.subtotal)) +
       (q.tierDiscount + q.volumeDiscount ? row("Descuentos", "−" + money(q.tierDiscount + q.volumeDiscount), "off") : "") +
       row("Total de productos", money(q.productsTotal)) +
-      row(q.freeShipping ? "Envío" : esc(z ? z.title : "Envío"), q.freeShipping ? "Gratis" : money(q.shippingCost)) +
+      row(q.freeShipping ? "Envío" : esc(z ? z.title : "Envío"), q.freeShipping || !q.shippingCost ? "Sin costo" : money(q.shippingCost)) +
       (mode === "local" && contact.lugar ? row("Lugar de entrega", esc(contact.lugar)) : "") +
       row("Total a pagar", money(q.total), "total") +
       row("Entrega estimada", esc(deliveryEta(q))) +
-      '<div class="note ' + (q.zone === "paqueteria" ? "warn" : "ok") + '" id="cf-ship">' + shipNote + " El total se confirma en tu orden de compra antes de cualquier cobro.</div>" +
+      '<div class="note ' + (q.zone === "paqueteria" ? "warn" : "ok") + '" id="cf-ship">' + shipNote + " Te confirmamos existencia y total por WhatsApp antes de cualquier cobro.</div>" +
       '<label class="pay on" style="margin-top:12px"><input type="checkbox" id="cf-ok"><span>Entiendo el costo y el tiempo de envío según los Términos y Condiciones</span></label>' +
       "</div>" +
       '<button class="fgo" type="button" id="cf-go" data-cf="yes" disabled>Confirmar y enviar · ' + money(q.total) + "</button>" +
@@ -1452,7 +1646,7 @@
     var waUrl = wa.length >= 10 ? "https://wa.me/" + (wa.length === 10 ? "52" + wa : wa) + "?text=" + encodeURIComponent("Hola, acabo de mandar mi pedido " + r.code + " (" + plural(t.pieces, "pieza", "piezas") + ").") : "";
     $("sheetin").innerHTML =
       '<div class="card done"><div class="ok">' + ICON_CHECK + "</div><h2>¡Pedido enviado!</h2>" +
-      "<p>" + plural(t.pieces, "pieza", "piezas") + " · total estimado " + money(t.q.total) + ".<br>Lo revisamos y te confirmamos tu orden de compra con su folio y el enlace para seguirla." +
+      "<p>" + plural(t.pieces, "pieza", "piezas") + " · total estimado " + money(t.q.total) + ".<br>Lo revisamos y te confirmamos tu pedido por WhatsApp, con su folio y el enlace para seguirlo." +
       (payOnline ? "<br>Ahí mismo vas a poder pagar con tarjeta (Mercado Pago)." : "") + "</p>" +
       '<div class="code">' + esc(r.code) + '</div><p style="font-size:13px">Tu código de pedido</p></div>' +
       (waUrl ? '<a class="cta full" href="' + esc(waUrl) + '" target="_blank" rel="noopener">Avisar por WhatsApp</a>' : "") +
