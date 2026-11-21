@@ -293,6 +293,9 @@
   .demo { display: flex; align-items: center; gap: 10px; background: #1C1C1E; color: #fff; }
   .demo b { display: block; font-size: 15px; }
   .demo span { font-size: 13px; color: #C7C7CC; }
+  .howto h3 { font-size: 17px; margin: 0 0 8px; letter-spacing: -.2px; }
+  .howto p { font-size: 16px; line-height: 1.5; color: var(--ink); white-space: pre-line; margin: 0; }
+  .howto small { display: block; margin-top: 10px; font-size: 13px; color: var(--muted); }
   .foot { text-align: center; color: var(--faint); font-size: 12px; margin-top: 18px; }
   .foot a { color: var(--muted); }
   .foot.legal { margin-top: 6px; line-height: 1.4; padding: 0 12px; }
@@ -1018,7 +1021,10 @@
   function renderDetail() {
     var p = byId[detailId]; if (!p) return;
     var n = cart[p.id] || 0, list = flavorList(p), fq = flavorQty[p.id] || {}, max = maxOf(p), off = tierBps() > 0, u = imgUrl(p), inStock = hasStock(p);
-    var meta = [servingsText(p), p.presentation && p.presentation !== p.servings ? p.presentation : "", p.segment, p.category].filter(Boolean).join(" · ");
+    // 2.18.11 · Sin repetir (p. ej. «Soporte hormonal · Soporte hormonal»).
+    var meta = [servingsText(p), p.presentation && p.presentation !== p.servings ? p.presentation : "", p.segment, p.category].filter(function (v, i, a) {
+      return v && a.findIndex(function (w) { return w && fold(w) === fold(v); }) === i;
+    }).join(" · ");
     var html = '<div class="top"><button type="button" id="dback">‹ Volver</button><h2>' + esc(p.brand) + "</h2></div>" +
       '<div class="big">' + (inStock ? '<span class="ribbon">Entrega Inmediata</span>' : "") + (u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener" aria-label="Abrir la foto completa"><img src="' + esc(u) + '" alt="' + esc(p.name) + '" data-brand="' + esc(p.brand || "Nova Supps") + '" onerror="this.outerHTML=window._svgFallback(this.dataset.brand)"></a>' : window._svgFallback(p.brand || "Nova Supps")) + "</div>" +
       '<div class="card dt" style="margin-top:12px"><div class="brand">' + esc(p.brand) + "</div><h2>" + esc(p.name) + "</h2>" +
@@ -1044,6 +1050,9 @@
         '<p class="sec" style="margin:12px 0 8px">CANTIDAD</p>' + (max > 0 || n ? '<div class="step"><button type="button" data-act="minus" data-id="' + esc(p.id) + '" aria-label="Quitar uno de ' + esc(p.name) + '">−</button>' +
           '<input inputmode="numeric" data-act="qty" data-id="' + esc(p.id) + '" value="' + n + '" aria-label="Cantidad de ' + esc(p.name) + '"><button class="plus" type="button" data-act="plus" data-id="' + esc(p.id) + '" aria-label="Agregar uno de ' + esc(p.name) + '">+</button></div>' : '<button class="add" type="button" disabled>Agotado</button>') + "</div>";
     }
+    // 2.18.11 · Cómo se toma: solo llega si el dueño lo aprobó en la app.
+    var howto = String(p.modo_uso || "").trim();
+    if (howto) html += '<div class="card howto"><h3>Cómo se toma</h3><p>' + esc(howto) + '</p><small>Sigue siempre las indicaciones de la etiqueta del producto.</small></div>';
     html += '<button class="cta full" type="button" id="dok">' + (n ? "Listo · " + plural(n, "pieza", "piezas") + " · " + money(yourPrice(p) * n) : "Volver al catálogo") + "</button>";
     $("detailin").innerHTML = html;
     $("dback").onclick = back;
