@@ -1588,6 +1588,8 @@
     };
     if (tsAnswer) body.turnstile = tsAnswer;
     var payOnline = contact.pay === "tarjeta_linea";
+    // 2.18.13 · Efectivo o terminal: en la confirmación se dice que paga al recibir (no que ya pagó).
+    var payKind = contact.pay;
     var done = function (r) {
       sending = false;
       if (!r || !r.ok) {
@@ -1599,7 +1601,7 @@
       try { sessionStorage.setItem("nova-pedido-code-" + token, String(r.code || "")); } catch (e) {}
       cart = {}; flavors = {}; flavorQty = {}; contact = {}; notes = ""; window._termsAccepted = false;
       save();
-      renderDone(r, t, payOnline);
+      renderDone(r, t, payOnline, payKind);
     };
     if (demo) { window.__demoBody = body; return setTimeout(function () { done({ ok: true, code: "D3M0A1" }); }, 600); }
     sendOrder(body).then(done).catch(function () { done(null); });
@@ -1641,13 +1643,14 @@
     window._shipConfirmed = yes;
     back();
   });
-  function renderDone(r, t, payOnline) {
+  function renderDone(r, t, payOnline, payKind) {
     var wa = String(data.catalog.whatsapp || "").replace(/\D/g, "");
     var waUrl = wa.length >= 10 ? "https://wa.me/" + (wa.length === 10 ? "52" + wa : wa) + "?text=" + encodeURIComponent("Hola, acabo de mandar mi pedido " + r.code + " (" + plural(t.pieces, "pieza", "piezas") + ").") : "";
     $("sheetin").innerHTML =
       '<div class="card done"><div class="ok">' + ICON_CHECK + "</div><h2>¡Pedido enviado!</h2>" +
       "<p>" + plural(t.pieces, "pieza", "piezas") + " · total estimado " + money(t.q.total) + ".<br>Lo revisamos y te confirmamos tu pedido por WhatsApp, con su folio y el enlace para seguirlo." +
-      (payOnline ? "<br>Ahí mismo vas a poder pagar con tarjeta (Mercado Pago)." : "") + "</p>" +
+      (payOnline ? "<br>Ahí mismo vas a poder pagar con tarjeta (Mercado Pago)." : "") +
+      (payKind === "efectivo" ? "<br><b>Pagas en efectivo al recibir tu pedido.</b> No necesitas pagar antes." : payKind === "tarjeta_entrega" ? "<br><b>Pagas con tarjeta (terminal) al recibir tu pedido.</b> No necesitas pagar antes." : "") + "</p>" +
       '<div class="code">' + esc(r.code) + '</div><p style="font-size:13px">Tu código de pedido</p></div>' +
       (waUrl ? '<a class="cta full" href="' + esc(waUrl) + '" target="_blank" rel="noopener">Avisar por WhatsApp</a>' : "") +
       '<button class="ghost" type="button" id="again">Hacer otro pedido</button>';
