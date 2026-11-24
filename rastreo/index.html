@@ -297,24 +297,27 @@
       return '<div class="node ' + s.state + '" title="' + esc(s.label) + '">' + svg(icon) + "</div>";
     }).join("");
     var labels = d.steps.map(function (s) {
-      var short = s.key === "cerca" ? "Cerca" : s.key === "pagado" ? "Pagado" : s.label;
+      // 2.18.13 · Si paga al recibir (efectivo o terminal), el paso 2 es «Confirmado», nunca «Pagado».
+      var short = s.key === "cerca" ? "Cerca" : s.key === "pagado" ? (s.label === "Confirmado" ? "Confirmado" : "Pagado") : s.label;
       return '<div class="' + (s.state === "current" ? "cur" : s.state === "done" ? "on" : "") + '">' + esc(short) + "</div>";
     }).join("");
     var timeline = d.steps.map(function (s, i) {
       var extra = s.state === "current" && s.key !== "pagado" ? " · en proceso" : "";
       // 2.14.2: «Esperando tu pago» en lugar de «Pago recibido · esperando tu pago».
       var title = s.key === "pagado" && s.state !== "done" ? (s.state === "waiting" ? "Pago pendiente" : "Esperando tu pago") : s.label;
+      var confirm = s.key === "pagado" && s.label === "Confirmado";
       return '<div class="tl ' + s.state + '" style="animation-delay:' + (i * 90) + 'ms"><div class="dotcol"><div class="dot"></div>' + (i < d.steps.length - 1 ? '<div class="bar"></div>' : "") +
-        "</div><div><h3>" + esc(title) + extra + "</h3><p>" + (s.at ? when(s.at) : s.key === "pagado" && s.state !== "done" ? "Cuando registremos tu pago, avanza solo" : esc(s.desc)) + "</p></div></div>";
+        "</div><div><h3>" + esc(title) + extra + "</h3><p>" + (confirm ? esc(s.desc) + (s.at ? " · " + when(s.at) : "") : s.at ? when(s.at) : s.key === "pagado" && s.state !== "done" ? "Cuando registremos tu pago, avanza solo" : esc(s.desc)) + "</p></div></div>";
     }).join("");
     var banner = st === "cancelado" ? '<div class="banner bad">Cancelado' + (d.cancelReason ? ": " + esc(d.cancelReason) : "") + "</div>"
-      : st === "entregado" ? '<div class="banner ok">Pedido entregado ✓</div>' : "";
+      // 2.18.14 · Al entregar, la confirmación del pago (sin ella no se cierra, salvo crédito).
+      : st === "entregado" ? '<div class="banner ok">' + (d.paid > 0 && d.balance <= 0 ? "Pedido entregado y pagado ✓" : "Pedido entregado ✓") + "</div>" : "";
     top.innerHTML =
       '<div class="card hero' + (firstPaint ? " anim" : "") + (dead ? " dead" : "") + '"><div class="folio">' + (d.code && d.code !== d.folio ? "PEDIDO No. " + esc(d.code) : "ORDEN " + esc(d.folio)) + "</div><h1>" + esc(headline) + "</h1><p>" + esc(d.distributor) + (sub ? " · " + esc(sub) : "") + "</p>" +
       '<span class="pill">' + esc(d.statusLabel) + "</span>" +
       '<div class="track"><div class="lane"><div class="rail"></div><div class="fill" id="fill"></div><div class="truck" id="truck"><span>' + svg(ICONS.en_camino) + "</span></div></div>" +
       '<div class="nodes">' + nodes + '</div></div><div class="labels">' + labels + "</div>" + banner +
-      '<div class="timeline">' + timeline + "</div></div>" + (st === "solicitado" && !d.credit && d.balance > 0 && d.paid === 0 ? '<div class="card" id="validity"></div>' : "");
+      '<div class="timeline">' + timeline + "</div></div>" + (st === "solicitado" && !d.credit && !d.payOnDelivery && d.balance > 0 && d.paid === 0 ? '<div class="card" id="validity"></div>' : "");
     var ship = "";
     if (d.carrier) {
       ship = '<div class="card"><p class="sec">ENVÍO</p>' +
@@ -333,8 +336,10 @@
     rest.innerHTML = (PAY_MSG && d.balance > 0 && !dead ? '<div class="paymsg ' + PAY_MSG[0] + '">' + esc(PAY_MSG[1]) + "</div>" : "") + ship +
       '<div class="card"><p class="sec">RESUMEN</p>' +
       '<div class="row"><span>Piezas</span><b>' + esc(d.pieces) + "</b></div>" +
-      '<div class="row"><span>Pagado</span><b>' + money(d.paid) + "</b></div>" +
-      (d.balance > 0 && !dead ? '<div class="row"><span>Saldo</span><b style="color:var(--amber)">' + money(d.balance) + "</b></div>" : "") +
+      // 2.18.13 · Paga al recibir: forma de pago y «Pagas al recibir» en vez de «Pagado $0» y «Saldo».
+      (d.payOnDelivery && d.payLabel ? '<div class="row"><span>Forma de pago</span><b>' + esc(d.payLabel) + "</b></div>" : "") +
+      (d.payOnDelivery && !(d.paid > 0) ? "" : '<div class="row"><span>Pagado</span><b>' + money(d.paid) + "</b></div>") +
+      (d.balance > 0 && !dead ? '<div class="row"><span>' + (d.payOnDelivery ? "Pagas al recibir" : "Saldo") + '</span><b style="color:var(--amber)">' + money(d.balance) + "</b></div>" : "") +
       (d.due && d.balance > 0 && !dead ? '<div class="row"><span>Fecha de pago</span><b>' + esc(new Date(d.due).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })) + "</b></div>" : "") +
       '<div class="row total"><span>Total</span><b>' + money(d.total) + "</b></div>" +
       (d.balance > 0 && !dead && safePay(d.payUrl) && !(PAY_MSG && PAY_MSG[0] === "ok")
