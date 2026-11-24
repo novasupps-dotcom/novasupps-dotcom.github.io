@@ -310,7 +310,8 @@
         "</div><div><h3>" + esc(title) + extra + "</h3><p>" + (confirm ? esc(s.desc) + (s.at ? " · " + when(s.at) : "") : s.at ? when(s.at) : s.key === "pagado" && s.state !== "done" ? "Cuando registremos tu pago, avanza solo" : esc(s.desc)) + "</p></div></div>";
     }).join("");
     var banner = st === "cancelado" ? '<div class="banner bad">Cancelado' + (d.cancelReason ? ": " + esc(d.cancelReason) : "") + "</div>"
-      : st === "entregado" ? '<div class="banner ok">Pedido entregado ✓</div>' : "";
+      // 2.18.14 · Al entregar, la confirmación del pago (sin ella no se cierra, salvo crédito).
+      : st === "entregado" ? '<div class="banner ok">' + (d.paid > 0 && d.balance <= 0 ? "Pedido entregado y pagado ✓" : "Pedido entregado ✓") + "</div>" : "";
     top.innerHTML =
       '<div class="card hero' + (firstPaint ? " anim" : "") + (dead ? " dead" : "") + '"><div class="folio">' + (d.code && d.code !== d.folio ? "PEDIDO No. " + esc(d.code) : "ORDEN " + esc(d.folio)) + "</div><h1>" + esc(headline) + "</h1><p>" + esc(d.distributor) + (sub ? " · " + esc(sub) : "") + "</p>" +
       '<span class="pill">' + esc(d.statusLabel) + "</span>" +
