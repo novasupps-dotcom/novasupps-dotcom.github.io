@@ -70,8 +70,9 @@
   function page() {
     var hasDest = live.dest_lat != null;
     app.innerHTML =
-      '<div class="card"><p class="sec">PEDIDO ' + esc(order ? order.folio : "") + "</p><h1>" + esc(order ? order.distributor : "Entrega") + "</h1>" +
-      '<p class="muted">' + esc(order ? [order.zone, order.pieces ? order.pieces + " piezas" : ""].filter(Boolean).join(" · ") : "") + "</p>" +
+      // 2.18.16 · El número que le dio la página al cliente (no el folio de la orden de compra).
+      '<div class="card"><p class="sec">PEDIDO ' + esc(order ? (order.code ? "No. " + order.code : order.folio) : "") + "</p><h1>" + esc(order ? order.distributor : "Entrega") + "</h1>" +
+      '<p class="muted">' + esc(order ? [order.zone, order.pieces ? order.pieces + (Number(order.pieces) === 1 ? " pieza" : " piezas") : ""].filter(Boolean).join(" · ") : "") + "</p>" +
       '<div class="state" id="state"><i></i><span>Ubicación en pausa</span></div>' +
       '<div class="big" id="dist">' + (hasDest ? fmtDist(live.distance_m) : "Sin destino") + '</div><p class="muted" id="info">' +
       (hasDest ? "Distancia al cliente" : "La tienda no fijó la ubicación del cliente; el cliente verá tu ubicación de todas formas.") + "</p>" +
@@ -179,7 +180,7 @@
       .catch(function () { btn.disabled = false; msg.innerHTML = '<div class="note">Sin conexión. Intenta de nuevo.</div>'; });
   }
   function closed(title, text) {
-    app.innerHTML = '<div class="card"><p class="sec">PEDIDO ' + esc(order ? order.folio : "") + "</p><h1>" + esc(title) + '</h1><p class="muted">' + esc(text) + '</p><div class="ok">✓ Reparto cerrado</div></div>';
+    app.innerHTML = '<div class="card"><p class="sec">PEDIDO ' + esc(order ? (order.code ? "No. " + order.code : order.folio) : "") + "</p><h1>" + esc(title) + '</h1><p class="muted">' + esc(text) + '</p><div class="ok">✓ Reparto cerrado</div></div>';
   }
 
   if (!/^[a-z0-9]{16,64}$/.test(token) || key.length < 16) return fail("Enlace incompleto", "Pide a la tienda el enlace de reparto completo.");

@@ -73,7 +73,9 @@
   .maptop { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
   .big { font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
   .driver { width: 34px; height: 34px; border-radius: 50%; background: var(--c); border: 3px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,.25); display: grid; place-items: center; }
-  .driver svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; }
+  .driver svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; transition: transform .3s; }
+  /* 2.18.16 · El carrito voltea hacia donde avanza. */
+  .driver.west svg { transform: scaleX(-1); }
   .dest { width: 18px; height: 18px; border-radius: 50%; background: var(--red); border: 3px solid #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3); }
   /* Datos */
   .row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; font-size: 15px; }
@@ -373,15 +375,34 @@
   }
 
   // ------------------------------------------------------------ mapa del reparto
-  var map = null, driver = null, dest = null, line = null, anim = null, fitted = false;
+  var map = null, driver = null, dest = null, line = null, path = null, anim = null, fitted = false, west = false;
+  // 2.18.16 · Recorrido: línea continua por donde ya pasó el repartidor (lo guarda el servidor, hasta
+  // 400 puntos) y punteada de él al punto de entrega. El carrito avanza sobre la línea de forma continua
+  // entre una lectura y la siguiente (cada ~5 s) y voltea hacia donde va.
+  var LIVE_EVERY = 5000;
+  function trailOf(l) { return (Array.isArray(l.trail) ? l.trail : []).filter(function (p) { return Array.isArray(p) && isFinite(p[0]) && isFinite(p[1]); }).map(function (p) { return [Number(p[0]), Number(p[1])]; }); }
+  function setWest(lngFrom, lngTo) {
+    if (Math.abs(lngTo - lngFrom) < 0.00003) return;
+    west = lngTo < lngFrom;
+    var el = driver && driver.getElement && driver.getElement(); var box = el && el.querySelector(".driver");
+    if (box) box.classList.toggle("west", west);
+  }
   function icon(cls, inner) { return L.divIcon({ className: "", html: '<div class="' + cls + '">' + (inner || "") + "</div>", iconSize: cls === "dest" ? [18, 18] : [34, 34], iconAnchor: cls === "dest" ? [9, 9] : [17, 17] }); }
   function glide(marker, to) {
-    var from = marker.getLatLng(), t0 = performance.now(), dur = 1500;
+    var from = marker.getLatLng(), t0 = performance.now();
+    // Avanza de forma continua hasta la siguiente lectura (sin frenar en cada punto).
+    var dur = LIVE_EVERY - 300;
     if (anim) cancelAnimationFrame(anim);
+    setWest(from.lng, to[1]);
     var step = function (now) {
-      var k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
-      marker.setLatLng([from.lat + (to[0] - from.lat) * e, from.lng + (to[1] - from.lng) * e]);
+      var k = Math.min(1, (now - t0) / dur);
+      var at = [from.lat + (to[0] - from.lat) * k, from.lng + (to[1] - from.lng) * k];
+      marker.setLatLng(at);
+      // La línea recorrida y la punteada siguen al carrito.
+      if (path) { var ps = path.getLatLngs(); if (ps.length) { ps[ps.length - 1] = L.latLng(at[0], at[1]); path.setLatLngs(ps); } }
+      if (line && dest) line.setLatLngs([at, dest.getLatLng()]);
       if (k < 1) anim = requestAnimationFrame(step);
+      else if (map && !map.getBounds().pad(-0.15).contains(marker.getLatLng())) map.panTo(marker.getLatLng(), { animate: true });
     };
     anim = requestAnimationFrame(step);
   }
@@ -406,12 +427,19 @@
     }
     if (l.dest_lat != null && !dest) dest = L.marker([l.dest_lat, l.dest_lng], { icon: icon("dest") }).addTo(map);
     if (l.lat != null) {
+      var c = getComputedStyle(document.documentElement).getPropertyValue("--c");
+      // Recorrido hasta ahora (el último punto es el carrito; se mueve con él).
+      var tr = trailOf(l);
+      var start = driver ? driver.getLatLng() : L.latLng(l.lat, l.lng);
+      var pts = tr.concat([[start.lat, start.lng]]);
+      if (!path) path = L.polyline(pts, { color: c, weight: 5, opacity: .85, lineCap: "round", lineJoin: "round" }).addTo(map);
+      else path.setLatLngs(pts);
       if (!driver) driver = L.marker([l.lat, l.lng], { icon: icon("driver", svg(ICONS.en_camino)), zIndexOffset: 1000 }).addTo(map);
-      else glide(driver, [l.lat, l.lng]);
       if (dest) {
-        if (!line) line = L.polyline([[l.lat, l.lng], [l.dest_lat, l.dest_lng]], { color: getComputedStyle(document.documentElement).getPropertyValue("--c"), weight: 3, dashArray: "6 8", opacity: .7 }).addTo(map);
-        else line.setLatLngs([[l.lat, l.lng], [l.dest_lat, l.dest_lng]]);
+        if (!line) line = L.polyline([[start.lat, start.lng], [l.dest_lat, l.dest_lng]], { color: c, weight: 3, dashArray: "6 8", opacity: .55 }).addTo(map);
       }
+      if (tr.length >= 2) setWest(tr[tr.length - 2][1], tr[tr.length - 1][1]);
+      glide(driver, [l.lat, l.lng]);
       if (!fitted) { map.fitBounds(dest ? L.latLngBounds([[l.lat, l.lng], [l.dest_lat, l.dest_lng]]).pad(0.35) : L.latLngBounds([[l.lat, l.lng]]).pad(0.5)); fitted = true; }
     } else if (dest && !fitted) { map.setView([l.dest_lat, l.dest_lng], 14); fitted = true; }
     setTimeout(function () { map.invalidateSize(); }, 50);
@@ -460,7 +488,7 @@
   if (demo) demoRun(); else load();
   setInterval(function () { if (!demo) load(); }, 45000);
   // Con reparto en vivo, la ubicación se consulta cada 8 s mientras la página está a la vista.
-  setInterval(function () { if (!demo && !document.hidden && live && live.active) loadLive(); }, 8000);
+  setInterval(function () { if (!demo && !document.hidden && live && live.active) loadLive(); }, LIVE_EVERY);
   setInterval(tick, 1000);
   document.addEventListener("visibilitychange", function () { if (!demo && !document.hidden) load(); });
 })();
