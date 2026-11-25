@@ -370,6 +370,13 @@
   .accept { display: flex; align-items: flex-start; gap: 12px; min-height: 44px; margin: 14px 2px 12px; cursor: pointer; font-size: 15px; font-weight: 600; color: var(--ink); }
   .accept input { width: 22px; height: 22px; margin: 0; accent-color: var(--ink); cursor: pointer; flex: none; }
   .accept a { color: inherit; }
+  .accept.remember { margin: 16px 0 4px; font-weight: 600; }
+  .accept small { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; font-weight: 500; }
+  .morebtn { width: 100%; min-height: 44px; margin-top: 6px; border: 0; border-radius: 12px; background: none; color: var(--ink); font-size: 15px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+  .linkbtn { min-height: 44px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+  .again { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 14px; padding: 12px 14px; border: 0; border-radius: 14px; background: var(--paper); box-shadow: inset 0 0 0 2px var(--ink); color: var(--ink); font-size: 16px; font-weight: 700; text-align: left; }
+  .again svg { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .again small { display: block; color: var(--muted); font-size: 13px; font-weight: 500; }
   /* 2.18.13 · Ficha */
   .top .grow { flex: 1; }
   .topwa { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; color: var(--ink); }
@@ -491,6 +498,7 @@
   var ICON_SLIDERS = '<svg viewBox="0 0 24 24"><path d="M4 7h9M18 7h2M4 17h3M12 17h8"/><circle cx="15.5" cy="7" r="2.3"/><circle cx="9.5" cy="17" r="2.3"/></svg>';
   var ICON_X = '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>';
   var ICON_DOWN = '<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>';
+  var ICON_AGAIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>';
   var ICON_ZOOM = '<svg viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
 
   // ------------------------------------------------------------ memoria de la pestaña
@@ -506,6 +514,45 @@
   }
   function save() {
     try { sessionStorage.setItem(LS, JSON.stringify({ cart: cart, flavors: flavors, flavorQty: flavorQty })); } catch (e) {}
+  }
+  // 2.18.22 · «Recordar mis datos en este teléfono» (solo si el cliente lo pide): sus datos de contacto
+  // y entrega, y su último pedido para «Repetir mi último pedido». Se queda solo en este navegador.
+  var ME_KEY = "nova-cliente";
+  var ME_FIELDS = ["name", "phone", "email", "business", "zone", "freeMode", "lugar", "geo", "cp", "col", "city", "state", "street", "addr2", "pay"];
+  var remember = false;
+  function readMe() { try { var m = JSON.parse(localStorage.getItem(ME_KEY) || "null"); return m && m.v === 1 ? m : null; } catch (e) { return null; } }
+  function forgetMe() { try { localStorage.removeItem(ME_KEY); } catch (e) {} remember = false; }
+  function saveMe(snapContact, snapCart) {
+    if (!remember) return forgetMe();
+    var m = readMe() || { v: 1, contact: {}, last: {} };
+    m.contact = {}; ME_FIELDS.forEach(function (k) { if (snapContact[k]) m.contact[k] = String(snapContact[k]).slice(0, 160); });
+    m.last = m.last || {};
+    m.last[demo ? "demo" : token] = { at: new Date().toISOString(), cart: snapCart.cart, flavors: snapCart.flavors, flavorQty: snapCart.flavorQty };
+    try { localStorage.setItem(ME_KEY, JSON.stringify(m)); } catch (e) {}
+  }
+  /** Con datos guardados, los vuelve a poner (sin pisar lo que ya escribió en esta pestaña). */
+  function loadMe() {
+    var m = readMe(); if (!m) return;
+    remember = true;
+    ME_FIELDS.forEach(function (k) { if (m.contact && m.contact[k] && !contact[k]) contact[k] = m.contact[k]; });
+  }
+  /** Último pedido guardado con lo que aún existe en el catálogo: { cart, flavors, flavorQty, pieces }. */
+  function lastOrder() {
+    var m = readMe(), l = m && m.last && m.last[demo ? "demo" : token]; if (!l || !l.cart) return null;
+    var out = { cart: {}, flavors: {}, flavorQty: {}, pieces: 0 };
+    Object.keys(l.cart).forEach(function (id) {
+      var p = byId[id], n = Math.min(Math.floor(Number(l.cart[id]) || 0), p ? maxOf(p) : 0); if (!p || n <= 0) return;
+      out.cart[id] = n; out.pieces += n;
+      if (l.flavors && l.flavors[id] != null) out.flavors[id] = l.flavors[id];
+      if (l.flavorQty && l.flavorQty[id]) out.flavorQty[id] = l.flavorQty[id];
+    });
+    return out.pieces ? out : null;
+  }
+  function repeatLast() {
+    var r = lastOrder(); if (!r) return;
+    cart = r.cart; flavors = r.flavors; flavorQty = r.flavorQty; save();
+    renderMain(); renderBar();
+    toast("Agregamos tu último pedido: " + plural(r.pieces, "pieza", "piezas"));
   }
 
   // ------------------------------------------------------------ precios
@@ -528,7 +575,7 @@
   var COD = ["efectivo", "tarjeta_entrega"];
   /** Pago al entregar: solo con envío local; por paquetería, por adelantado. */
   function codAllowed(q) { return deliveryMode(q) !== "paqueteria"; }
-  var lugarOpen = false;
+  var lugarOpen = false, lugarAll = false;
   // ------------------------------------------------- 2.18.15 · punto exacto en el mapa (envío local)
   // Opcional: con él, quien te entrega te sigue en vivo hasta ese punto y te avisa al estar cerca.
   // El mapa (MapLibre + OpenFreeMap, vectorial) se carga solo al abrirlo.
@@ -708,8 +755,12 @@
     var list = lugares(), picked = list.indexOf(contact.lugar) >= 0 ? contact.lugar : "";
     if (picked && !lugarOpen)
       return '<div class="lugar"><label>Lugar de entrega *</label><button type="button" class="colpick" data-act="lugaropen" aria-expanded="false" aria-label="Lugar de entrega ' + esc(picked) + '. Toca para cambiarlo"><span>' + esc(picked) + "</span><em>Cambiar</em>" + ICON_DOWN + "</button></div>" + pinHtml();
+    // 2.18.22 · Con muchos lugares se ven los primeros 4 y «Ver los N lugares» (menos scroll en el celular).
+    var few = !lugarAll && list.length > 5 && !picked;
+    var shown = few ? list.slice(0, 4) : list;
     return '<div class="lugar"><label>Lugar de entrega *</label><div class="opts" id="lugar-opts" role="radiogroup" aria-label="Lugares de entrega local">' +
-      list.map(function (n, i) { var on = n === picked; return '<label class="opt' + (on ? " on" : "") + '"><input type="radio" name="lugar" data-act="lugarpick" value="' + i + '"' + (on ? " checked" : "") + "><span>" + esc(n) + "</span></label>"; }).join("") + "</div></div>" + pinHtml();
+      shown.map(function (n) { var i = list.indexOf(n), on = n === picked; return '<label class="opt' + (on ? " on" : "") + '"><input type="radio" name="lugar" data-act="lugarpick" value="' + i + '"' + (on ? " checked" : "") + "><span>" + esc(n) + "</span></label>"; }).join("") + "</div>" +
+      (few ? '<button type="button" class="morebtn" data-act="lugarall">Ver los ' + list.length + " lugares</button>" : "") + "</div>" + pinHtml();
   }
   var ZONES = {
     paqueteria: { title: "Envío por paquetería", sub: "3 a 5 días hábiles · a todo México", cost: envioForaneo },
@@ -1010,6 +1061,7 @@
       '<div class="hero"><h1>' + hello + "</h1>" + (sub ? "<p>" + sub + "</p>" : "") + trust +
       (tierBps() ? '<span class="badge">Nivel ' + esc(l.tier_name) + " · " + bpsLabel(tierBps()) + " de descuento ya aplicado</span>" : "") +
       (c.minOrder ? '<p style="margin-top:10px;font-size:14px">Pedido mínimo: <b>' + money(c.minOrder) + "</b></p>" : "") +
+      (function () { var r = !Object.keys(cart).length && lastOrder(); return r ? '<button type="button" class="again" id="again">' + ICON_AGAIN + "<span>Repetir mi último pedido<small>" + plural(r.pieces, "pieza", "piezas") + " · lo revisas antes de enviarlo</small></span></button>" : ""; })() +
       "</div>" +
       (demo ? '<div class="card demo"><div><b>Demostración</b><span>Así ve tu cliente el catálogo para pedir</span></div></div>' : "") +
       '<div class="searchrow"><label class="search">' + ICON_SEARCH + '<input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Buscar producto o marca" aria-label="Buscar producto, marca o sabor" value="' + esc(query) + '">' +
@@ -1022,6 +1074,7 @@
       "</select></label></div>" +
       '<div class="fsum2" id="count"></div>' +
       '<div class="grid" id="grid"></div><div class="pager" id="pager" hidden></div>';
+    if ($("again")) $("again").onclick = repeatLast;
     $("q").addEventListener("input", function (e) { query = e.target.value; page = 1; $("qx").hidden = !query; renderGrid(); });
     $("qx").addEventListener("click", function () { query = ""; $("q").value = ""; $("qx").hidden = true; page = 1; renderGrid(); $("q").focus(); });
     $("sortsel").addEventListener("change", function (e) { fl.sort = e.target.value; page = 1; renderGrid(); });
@@ -1084,6 +1137,7 @@
       else if (act === "remove") setQty(id, 0);
       else if (act === "open") openDetail(id);
       else if (act === "pinopen") openPinSheet();
+      else if (act === "lugarall") { lugarAll = true; renderReviewTotals(); var lo = document.querySelectorAll("#lugar-opts .opt")[4]; if (lo) { var li = lo.querySelector("input"); if (li) li.focus({ preventScroll: true }); } }
       else if (act === "lugaropen") {
         lugarOpen = true; renderReviewTotals();
         var ls = document.querySelector("#lugar-opts .opt.on"); if (ls) ls.scrollIntoView({ block: "nearest" });
@@ -1555,12 +1609,16 @@
         field("email", "Tu correo", "email", "email", "email", 120, "nombre@correo.com") +
         '<p class="hint">Ahí te mandamos el seguimiento. Es obligatorio si es por paquetería o pagas con tarjeta en línea.</p>' +
         '<details class="more"' + (contact.business ? " open" : "") + '><summary>¿Compras para un gimnasio o negocio? (opcional)</summary>' +
-        field("business", "Negocio o gimnasio", "text", "organization") + "</details></div>";
+        field("business", "Negocio o gimnasio", "text", "organization") + "</details>" +
+        '<label class="accept remember"><input type="checkbox" id="rememberMe"' + (remember ? " checked" : "") + "><span>Recordar mis datos en este teléfono<small>Para tu siguiente pedido y «Repetir mi último pedido». Solo se guardan aquí.</small></span></label>" +
+        (readMe() ? '<button type="button" class="linkbtn" id="forgetMe">Olvidar mis datos de este teléfono</button>' : "") + "</div>";
     }
     html += '<div id="err" style="margin-top:12px"></div><button class="cta full" type="button" id="next">Continuar</button><p class="waitnote" id="next-why" aria-live="polite"></p>';
     $("sheetin").innerHTML = html;
     $("back").onclick = back;
     $("next").onclick = goPay;
+    var rm = $("rememberMe"); if (rm) rm.onchange = function () { remember = rm.checked; if (!remember) forgetMe(); };
+    var fm = $("forgetMe"); if (fm) fm.onclick = function () { forgetMe(); var r2 = $("rememberMe"); if (r2) r2.checked = false; fm.remove(); toast("Listo: borramos tus datos de este teléfono"); };
     renderReviewTotals();
     renderColonias();
     if (contact.cp) { cpAsked = ""; lookupCP(contact.cp); } else cpHint("Escribe tu código postal para ver tus colonias.");
@@ -1827,8 +1885,10 @@
       }
       // 2.15.7 · Código del pedido para ligar el pago con tarjeta si el cliente vuelve de Mercado Pago a esta página.
       try { sessionStorage.setItem("nova-pedido-code-" + token, String(r.code || "")); } catch (e) {}
+      saveMe(contact, { cart: cart, flavors: flavors, flavorQty: flavorQty });
       cart = {}; flavors = {}; flavorQty = {}; contact = {}; notes = ""; window._termsAccepted = false;
       save();
+      loadMe();
       renderDone(r, t, payOnline, payKind);
     };
     if (demo) { window.__demoBody = body; return setTimeout(function () { done({ ok: true, code: "D3M0A1" }); }, 600); }
@@ -1987,6 +2047,7 @@
     if (d.catalog) d.catalog.tipos = TIPO_ORDER.filter(function (t) { return products.some(function (p) { return tipoOf(p) === t; }); });
     byId = {}; products.forEach(function (p) { byId[p.id] = p; });
     load();
+    loadMe();
     Object.keys(cart).forEach(function (id) { if (!byId[id]) delete cart[id]; else cart[id] = Math.min(cart[id], maxOf(byId[id])); }); var lk = link(); const ttlH = Number(lk.token_ttl_hours || 12); const expMs = lk.expires_at ? Date.parse(lk.expires_at) : ((Date.parse(lk.updated_at || lk.created_at || "") || Date.now()) + ttlH * 3600000); const remMs = expMs - Date.now(); if (remMs <= 0) { window._tokExpired = true; var waNum = String((d.catalog && d.catalog.whatsapp) || "").replace(/[^0-9]/g, ""); var waUrl = "https://wa.me/" + (waNum.length >= 10 ? (waNum.length === 10 ? "52" + waNum : waNum) : "") + "?text=" + encodeURIComponent("Hola, mi enlace de pedido expiró tras sus " + ttlH + " horas de vigencia. ¿Me lo pueden renovar desde la app?"); $("main").innerHTML = '<div class="card hero"><h1>Enlace expirado</h1><p>Este enlace ha expirado tras sus ' + ttlH + ' horas de vigencia.</p><a class="btn" href="' + waUrl + '" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:12px;padding:10px 16px;border-radius:10px;background:#25D366;color:#fff;font-weight:700;text-decoration:none">Contactar por WhatsApp para renovar</a></div>'; return; } window._tokExpired = false;
     renderMain();
   }
