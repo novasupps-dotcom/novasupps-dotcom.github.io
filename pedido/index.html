@@ -412,9 +412,35 @@
     *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
     .sheet, .fsheet .panel, .bar, .toast, .acch svg { transition-property: opacity !important; transition-duration: .15s !important; }
   }
+  /* 2.18.25 · Intro: el logo se dibuja, se llena y encaja (una vez por visita, se salta con un toque). */
+  #intro { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: #0f0f12; transition: opacity .4s ease; cursor: pointer; }
+  #intro.bye { opacity: 0; pointer-events: none; }
+  #introStage { width: min(100vw, 100vh); height: min(100vw, 100vh); display: block; }
+  #intro .st path { fill: none; stroke: url(#gold); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  #intro .skip { position: absolute; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom)); min-height: 44px; padding: 0 18px; border: 0; border-radius: 22px; background: rgba(255, 255, 255, .14); color: #fff; font: 600 15px -apple-system, system-ui, sans-serif; cursor: pointer; }
+  html.intro-on, html.intro-on body { overflow: hidden; }
 </style>
 </head>
 <body>
+<script>
+  // 2.18.25 · Intro de marca al abrir la página: una vez por pestaña, nunca al volver de pagar ni con
+  // «reducir movimiento». El catálogo carga debajo mientras tanto.
+  (function () {
+    try {
+      if (sessionStorage.getItem("nova-intro") || matchMedia("(prefers-reduced-motion: reduce)").matches || /[?&](demo|payment_id|collection_id|status)=/.test(location.search)) return;
+      sessionStorage.setItem("nova-intro", "1");
+    } catch (e) { return; }
+    document.documentElement.classList.add("intro-on");
+    var box = document.createElement("div");
+    box.id = "intro";
+    box.innerHTML = '<button type="button" class="skip">Saltar</button>';
+    document.body.appendChild(box);
+    var js = document.createElement("script");
+    js.src = "intro.js";
+    js.onerror = function () { box.remove(); document.documentElement.classList.remove("intro-on"); };
+    document.body.appendChild(js);
+  })();
+</script>
 <div class="wrap" id="app">
   <header>
     <img src="logo.png" alt="GGG · Nova Supps" width="90" height="38">
