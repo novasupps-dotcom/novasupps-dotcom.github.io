@@ -571,7 +571,8 @@
   var LUGARES = ["Plaza Santín", "Smart Fit Plaza Santín", "Foro Pegaso", "Las Misiones I", "Las Misiones II", "Las Misiones III", "Villas Toscana", "Fraccionamiento Aurea", "Parque Industrial Toluca 2000"];
   var lugares = function () { var c = data && data.catalog && data.catalog.lugares_local; return Array.isArray(c) && c.length ? c.map(String) : LUGARES; };
   /** Cómo se entrega: «local» o «paqueteria» (con envío gratis lo elige el cliente adentro de la tarjeta). */
-  function deliveryMode(q) { return q.freeShipping ? contact.freeMode || "" : q.zone; }
+  // 2.18.23 · Con algún producto que no es de entrega inmediata, solo se envía por paquetería.
+  function deliveryMode(q) { return q.freeShipping ? (q.immediate === false ? "paqueteria" : contact.freeMode || "") : q.zone; }
   var COD = ["efectivo", "tarjeta_entrega"];
   /** Pago al entregar: solo con envío local; por paquetería, por adelantado. */
   function codAllowed(q) { return deliveryMode(q) !== "paqueteria"; }
@@ -762,9 +763,10 @@
       shown.map(function (n) { var i = list.indexOf(n), on = n === picked; return '<label class="opt' + (on ? " on" : "") + '"><input type="radio" name="lugar" data-act="lugarpick" value="' + i + '"' + (on ? " checked" : "") + "><span>" + esc(n) + "</span></label>"; }).join("") + "</div>" +
       (few ? '<button type="button" class="morebtn" data-act="lugarall">Ver los ' + list.length + " lugares</button>" : "") + "</div>" + pinHtml();
   }
+  var LOCAL_ONLY_IMM = "Solo para productos de entrega inmediata. Tu pedido lleva productos sobre pedido: se envía por paquetería.";
   var ZONES = {
     paqueteria: { title: "Envío por paquetería", sub: "3 a 5 días hábiles · a todo México", cost: envioForaneo },
-    local: { title: "Envío local", sub: "Menos de 72 horas hábiles · entrega sujeta a disponibilidad · en el lugar que elijas", cost: envioLocal }
+    local: { title: "Entrega local", sub: LOCAL_ONLY_IMM, cost: envioLocal }
   };
   /** Mismo cálculo que la app (descuento por nivel y luego por volumen, o solo el mayor). */
   function quote(subtotal) {
@@ -799,8 +801,10 @@
     var free = subtotal > 0 && subtotal >= envioGratis();
     // 2.17.4 · Con envío gratis solo hay una opción («Tu envío es gratis»): ya no se elige local o paquetería.
     var zSel = contact && contact.zone;
-    var z = free ? "gratis" : ZONES[zSel] ? zSel : "";
     var imm = cartImmediate();
+    // 2.18.23 · La entrega local es solo para pedidos de entrega inmediata.
+    if (!imm && zSel === "local") zSel = "paqueteria";
+    var z = free ? "gratis" : ZONES[zSel] ? zSel : "";
     var shipCost = z && !free ? zoneInfo(z, imm).cost() : 0;
     q.zone = z; q.freeShipping = free; q.shippingCost = shipCost; q.immediate = imm;
     q.shippingText = !z ? "" : free ? "Envío gratis" : zoneInfo(z, imm).title + ": " + money(shipCost);
@@ -1054,7 +1058,7 @@
     var sub = l.general ? "" : "Elige productos y cantidades. Te confirmamos tu pedido con su folio y el enlace para seguirlo.";
     var ico = function (d) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + d + "</svg>"; };
     var trust = '<ul class="trust" aria-label="Por qué pedir aquí">' +
-      "<li>" + ico('<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>') + "Entrega local en 24 a 72 h</li>" +
+      "<li>" + ico('<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>') + "Entrega local en menos de 24 h</li>" +
       "<li>" + ico('<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>') + "Pagas al recibir</li>" +
       "<li>" + ico('<path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.1-5.6A8.4 8.4 0 1 1 21 11.5z"/>') + "Te confirmamos por WhatsApp</li></ul>";
     $("main").innerHTML =
@@ -1434,7 +1438,7 @@
       '<div class="price" style="margin-top:10px"><b>' + money(yourPrice(p)) + "</b>" + (off ? "<s>" + money(p.price) + "</s>" : "") + (perServing ? '<small class="per">' + money(perServing) + " por servicio</small>" : "") + "</div>" +
       (off ? '<span class="badge">Nivel ' + esc(link().tier_name) + " · " + bpsLabel(tierBps()) + " aplicado</span>" : "") +
       (limited() && p.avail != null ? '<div class="stock" style="margin-top:8px">' + (max > 0 ? "Disponibles: " + max : "Agotado") + "</div>" : "") +
-      (inStock ? '<div class="status ok">Entrega inmediata · en menos de 24 h</div>' : onOrder(p) ? '<div class="status warn">Sobre pedido · 1 a 5 días hábiles</div>' : '<div class="status">Entrega en 1 a 5 días hábiles, según disponibilidad</div>') +
+      (inStock ? '<div class="status ok">Entrega inmediata · en menos de 24 h</div>' : onOrder(p) ? '<div class="status warn">Sobre pedido · 1 a 5 días hábiles · se envía por paquetería</div>' : '<div class="status">Entrega en 1 a 5 días hábiles, según disponibilidad · por paquetería</div>') +
       "</div>";
     if (list.length > 1) {
       html += '<div class="card" id="flv-card"><p class="sec" style="margin-top:0">Elige sabores *</p>' + list.map(function (f, i) {
@@ -1487,13 +1491,13 @@
     if (zb) zb.innerHTML = q.freeShipping
       ? '<div class="pay ship on free"><span>Tu envío es gratis<small>Tu pedido es de ' + pesos(envioGratis()) + " o más. Elige cómo lo recibes:</small></span><b class=\"zp\">Gratis</b></div>" +
         '<div class="opts freemode" role="radiogroup" aria-label="Cómo recibes tu pedido">' +
-        [["paqueteria", "Por paquetería a tu domicilio", "3 a 5 días hábiles · pago por adelantado"], ["local", "Envío local", "Menos de 72 horas hábiles · entrega sujeta a disponibilidad · en el lugar que elijas"]].map(function (o) {
-          var on = contact.freeMode === o[0];
-          return '<label class="opt' + (on ? " on" : "") + '"><input type="radio" name="freemode" data-act="freemode" value="' + o[0] + '"' + (on ? " checked" : "") + "><span>" + o[1] + "<small>" + o[2] + "</small></span></label>";
-        }).join("") + "</div>" + (contact.freeMode === "local" ? lugaresHtml() : "")
+        [["paqueteria", "Por paquetería a tu domicilio", "3 a 5 días hábiles · pago por adelantado"], ["local", "Entrega local", q.immediate ? "En menos de 24 horas · en el lugar que elijas" : LOCAL_ONLY_IMM]].map(function (o) {
+          var off = o[0] === "local" && !q.immediate, on = deliveryMode(q) === o[0];
+          return '<label class="opt' + (on ? " on" : "") + (off ? " off" : "") + '"><input type="radio" name="freemode" data-act="freemode" value="' + o[0] + '"' + (on ? " checked" : "") + (off ? " disabled" : "") + "><span>" + o[1] + "<small>" + o[2] + "</small></span></label>";
+        }).join("") + "</div>" + (deliveryMode(q) === "local" ? lugaresHtml() : "")
       : Object.keys(ZONES).map(function (k) {
-          var z = zoneInfo(k, q.immediate), on = contact.zone === k, cost = z.cost();
-          return '<label class="pay ship' + (on ? " on" : "") + '"><input type="radio" name="zone" data-act="zone" value="' + k + '"' + (on ? " checked" : "") + "><span>" + esc(z.title) + "<small>" + esc(z.sub) + '</small></span><b class="zp">' + (cost ? "+" + pesos(cost) + " MXN" : "Sin costo") + "</b></label>" +
+          var z = zoneInfo(k, q.immediate), off = k === "local" && !q.immediate, on = q.zone === k, cost = z.cost();
+          return '<label class="pay ship' + (on ? " on" : "") + (off ? " off" : "") + '"><input type="radio" name="zone" data-act="zone" value="' + k + '"' + (on ? " checked" : "") + (off ? " disabled" : "") + "><span>" + esc(z.title) + "<small>" + esc(z.sub) + '</small></span><b class="zp">' + (off ? "" : cost ? "+" + pesos(cost) + " MXN" : "Sin costo") + "</b></label>" +
             (k === "local" && on ? lugaresHtml() : "");
         }).join("");
     // Pago al entregar solo con entrega local.
@@ -1510,7 +1514,7 @@
   /** 2.17.6 · Entrega estimada según el envío elegido. */
   function deliveryEta(q) {
     var m = deliveryMode(q);
-    return m === "local" ? (q.immediate ? "En menos de 24 horas" : "Menos de 72 horas hábiles · entrega sujeta a disponibilidad") : m === "paqueteria" ? "3 a 5 días hábiles después de confirmar tu pago" : DELIVERY;
+    return m === "local" ? "En menos de 24 horas" : m === "paqueteria" ? "3 a 5 días hábiles después de confirmar tu pago" : DELIVERY;
   }
   /**
    * 2.17.6 · Barra de beneficios: las metas de descuento por volumen y el envío gratis en una sola
@@ -1583,6 +1587,8 @@
     // 2.18.13 · Todo de entrega inmediata: ya queda elegida la entrega local (sin costo) con los lugares a la vista.
     if (t.q.immediate && !t.q.freeShipping && !contact.zone) { contact.zone = "local"; lugarOpen = !contact.lugar; t = totals(); }
     if (t.q.immediate && t.q.freeShipping && !contact.freeMode) { contact.freeMode = "local"; lugarOpen = !contact.lugar; t = totals(); }
+    if (!t.q.immediate && (contact.zone === "local" || !contact.zone)) { contact.zone = "paqueteria"; t = totals(); }
+    if (!t.q.immediate && contact.freeMode !== "paqueteria") { contact.freeMode = "paqueteria"; t = totals(); }
     var html = '<div class="top"><button type="button" id="back">' + CHEV_L + 'Catálogo</button><h2>Tu pedido</h2></div>';
     html += '<div class="card"><p class="sub" id="sheetinfo"></p>' + t.lines.map(function (x) {
       var p = x.p;
@@ -1647,7 +1653,7 @@
       '<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg><span>Originales y sellados. Cambio sin costo si llega dañado o equivocado.</span></li>' +
       '<li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.1-5.6A8.4 8.4 0 1 1 21 11.5z"/></svg><span>No se cobra nada ahora: te confirmamos existencia y total por WhatsApp.</span></li></ul>' +
       '<div class="card terms"><h3 class="tt">Términos del pedido</h3><ul class="tsum">' +
-      "<li>Entrega inmediata: menos de 24 h y sin costo. Entrega local: menos de 72 h hábiles, sujeta a disponibilidad. Paquetería: 3 a 5 días hábiles después de tu pago.</li>" +
+      "<li>Entrega local: solo con productos de entrega inmediata, en menos de 24 h y sin costo. Productos sobre pedido: solo por paquetería, 3 a 5 días hábiles después de tu pago.</li>" +
       "<li>Revisa tu pedido al recibirlo: faltantes o daños, avísanos en 48 h con foto.</li>" +
       "<li>No aceptamos devoluciones de productos abiertos o sin sello.</li></ul>" +
       '<details class="more"><summary>Ver términos completos</summary>' + termsHtml() + "</details></div>" +
@@ -1722,7 +1728,7 @@
     return "<ol>" +
       li("Precios y existencias.", "Precios en pesos mexicanos. Tu pedido es una solicitud: confirmamos existencia, precio final y total a pagar en tu orden de compra por WhatsApp (" + esc(wa) + ") antes de cualquier cobro. Respondemos el mismo día hábil; los pedidos que llegan después de las 18:00 h o en fin de semana se confirman el siguiente día hábil.") +
       li("Tiempo de entrega.", "De 1 a 5 días hábiles según la disponibilidad de cada producto en almacén. Son días hábiles de lunes a viernes, sin días festivos; los pedidos confirmados después de las 18:00 h o en fin de semana cuentan desde el siguiente día hábil. Si un producto es sobre pedido y tarda más, te avisamos antes de surtir.") +
-      li("Envío local (" + pesos(envioLocal()) + ").", "Si todo tu pedido es de entrega inmediata, se entrega en menos de 24 horas y sin costo. Si no, en menos de 72 horas hábiles, sujeta a disponibilidad del producto en almacén. Se entrega en uno de estos lugares: " + lugares().join(", ") + ". Te confirmamos día y hora por WhatsApp.") +
+      li("Entrega local (sin costo).", "Solo para pedidos en los que todos los productos son de entrega inmediata: se entrega en menos de 24 horas y sin costo. Si tu pedido lleva algún producto sobre pedido, se envía por paquetería. Se entrega en uno de estos lugares: " + lugares().join(", ") + ". Te confirmamos día y hora por WhatsApp.") +
       li("Envío por paquetería (" + pesos(envioForaneo()) + ").", "A todo México, de 3 a 5 días hábiles a partir de que se confirma tu pago. El tiempo de la paquetería puede variar en zonas extendidas.") +
       li("Envío sin costo.", "En pedidos con subtotal de productos desde " + pesos(envioGratis()) + ", local o por paquetería. Gimnasios con pedidos desde $15,000: entrega directa en sus instalaciones dentro de la cobertura local.") +
       li("Descuentos por volumen.", "Sobre el subtotal de productos: 3 % desde $5,000, 8.5 % desde $10,001 y 15 % desde $15,001. No se acumulan con otras promociones. Cada producto tiene un precio mínimo: si un descuento lo rebasa, se ajusta y lo verás en tu resumen. El envío no tiene descuento.") +
