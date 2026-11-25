@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://yqosgsrqffiyrwpgqxag.supabase.co https://tile.openstreetmap.org https://cdnjs.cloudflare.com; connect-src https://yqosgsrqffiyrwpgqxag.supabase.co; font-src 'self' data:; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://yqosgsrqffiyrwpgqxag.supabase.co https://tiles.openfreemap.org; connect-src https://yqosgsrqffiyrwpgqxag.supabase.co https://tiles.openfreemap.org; worker-src blob:; child-src blob:; font-src 'self' data:; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#FFFFFF">
 <title>Arma tu pedido · GGG Nova Supps</title>
 <meta name="description" content="Suplementos originales con entrega local y envíos a todo México. Arma tu pedido en línea y te lo confirmamos por WhatsApp.">
@@ -507,7 +507,7 @@
   var lugarOpen = false;
   // ------------------------------------------------- 2.18.15 · punto exacto en el mapa (envío local)
   // Opcional: con él, quien te entrega te sigue en vivo hasta ese punto y te avisa al estar cerca.
-  // El mapa (Leaflet + OpenStreetMap) se carga solo al abrirlo.
+  // El mapa (MapLibre + OpenFreeMap, vectorial) se carga solo al abrirlo.
   var pinOpen = false, pinMap = null, pinMarker = null, leafletP = null;
   var PIN_CENTER = [19.2826, -99.6557];
   function pinGeo() { var m = /^(-?\d{1,2}\.\d{3,7}),(-?\d{1,3}\.\d{3,7})$/.exec(String(contact.geo || "")); return m ? [Number(m[1]), Number(m[2])] : null; }
@@ -521,13 +521,17 @@
       '<div class="pinrow"><button type="button" data-act="pinme">Usar mi ubicación</button>' + (g ? '<button type="button" data-act="pinclear">Quitar</button>' : "") +
       '<button type="button" data-act="pindone">Listo</button><p class="hint" id="pin-hint" aria-live="polite">' + (g ? "Arrastra el pin si hace falta." : "Toca el mapa donde te entregamos.") + "</p></div></div>";
   }
-  function loadLeaflet() {
-    if (window.L) return Promise.resolve(window.L);
+  // 2.18.17 · Mapa vectorial (MapLibre + OpenFreeMap): nítido y limpio, como en el rastreo.
+  var MAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
+  function loadMapLib() {
+    if (window.maplibregl) return Promise.resolve(window.maplibregl);
     if (leafletP) return leafletP;
     leafletP = new Promise(function (ok, fail) {
-      var css = document.createElement("link"); css.rel = "stylesheet"; css.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"; document.head.appendChild(css);
-      var js = document.createElement("script"); js.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
-      js.onload = function () { ok(window.L); }; js.onerror = function () { leafletP = null; fail(new Error("mapa")); };
+      var css = document.createElement("link"); css.rel = "stylesheet"; css.href = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css";
+      css.integrity = "sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V"; css.crossOrigin = "anonymous"; document.head.appendChild(css);
+      var js = document.createElement("script"); js.src = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js";
+      js.integrity = "sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj"; js.crossOrigin = "anonymous";
+      js.onload = function () { ok(window.maplibregl); }; js.onerror = function () { leafletP = null; fail(new Error("mapa")); };
       document.head.appendChild(js);
     });
     return leafletP;
@@ -539,19 +543,23 @@
   /** Monta el mapa en #pinmap (se vuelve a montar cada vez que la tarjeta de envío se redibuja). */
   function mountPin() {
     var el = $("pinmap"); if (!pinOpen || !el) return;
-    loadLeaflet().then(function (L) {
+    loadMapLib().then(function (ml) {
       if (!$("pinmap") || $("pinmap") !== el) return;
       if (pinMap) { try { pinMap.remove(); } catch (e) {} pinMap = null; pinMarker = null; }
       var g = pinGeo();
-      pinMap = L.map(el, { zoomControl: true, attributionControl: true }).setView(g || PIN_CENTER, g ? 17 : 13);
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(pinMap);
-      var put = function (ll) {
-        if (pinMarker) pinMarker.setLatLng(ll);
-        else { pinMarker = L.marker(ll, { draggable: true, keyboard: false }).addTo(pinMap); pinMarker.on("dragend", function () { var p = pinMarker.getLatLng(); setPin(p.lat, p.lng); }); }
-        setPin(ll.lat, ll.lng);
+      pinMap = new ml.Map({ container: el, style: MAP_STYLE, center: g ? [g[1], g[0]] : [PIN_CENTER[1], PIN_CENTER[0]], zoom: g ? 17 : 13, attributionControl: { compact: true }, dragRotate: false, pitchWithRotate: false });
+      pinMap.touchZoomRotate.disableRotation();
+      pinMap.addControl(new ml.NavigationControl({ showCompass: false }), "top-left");
+      var put = function (lat, lng) {
+        if (pinMarker) pinMarker.setLngLat([lng, lat]);
+        else {
+          pinMarker = new ml.Marker({ color: "#D9252F", draggable: true }).setLngLat([lng, lat]).addTo(pinMap);
+          pinMarker.on("dragend", function () { var p = pinMarker.getLngLat(); setPin(p.lat, p.lng); });
+        }
+        setPin(lat, lng);
       };
-      if (g) put(L.latLng(g[0], g[1]));
-      pinMap.on("click", function (e) { put(e.latlng); });
+      if (g) put(g[0], g[1]);
+      pinMap.on("click", function (e) { put(e.lngLat.lat, e.lngLat.lng); });
       pinMap._novaPut = put;
     }).catch(function () { var h = $("pin-hint"); if (h) h.textContent = "No se pudo cargar el mapa. Revisa tu internet; también puedes seguir sin fijar el punto."; });
   }
@@ -560,9 +568,9 @@
     if (!navigator.geolocation) { if (h) h.textContent = "Tu navegador no comparte la ubicación: toca el mapa."; return; }
     if (h) h.textContent = "Buscando tu ubicación…";
     navigator.geolocation.getCurrentPosition(function (p) {
-      if (!pinMap || !window.L) return;
-      var ll = window.L.latLng(p.coords.latitude, p.coords.longitude);
-      pinMap.setView(ll, 17); if (pinMap._novaPut) pinMap._novaPut(ll);
+      if (!pinMap) return;
+      pinMap.flyTo({ center: [p.coords.longitude, p.coords.latitude], zoom: 17 });
+      if (pinMap._novaPut) pinMap._novaPut(p.coords.latitude, p.coords.longitude);
     }, function () { if (h) h.textContent = "No pudimos usar tu ubicación (permiso negado): toca el mapa donde te entregamos."; }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
   }
   /** Lista de lugares plegable: con uno elegido se ve solo ese; al tocarlo se despliega. */
