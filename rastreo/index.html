@@ -82,6 +82,14 @@
   #mapcard.nav #map { height: 62vh; min-height: 360px; }
   #mapcard.nav .maptop { background: var(--c); color: #fff; margin: -18px -18px 0; padding: 14px 18px; border-radius: 20px 20px 0 0; }
   #mapcard.nav .maptop .sec, #mapcard.nav #mapinfo { color: rgba(255,255,255,.88) !important; }
+  /* 2.18.17 · «Tu pedido llegó»: aviso grande para que el cliente salga. */
+  .arrive { display: flex; align-items: center; gap: 12px; margin: 12px 0 0; padding: 14px 16px; border-radius: 16px; background: #1F7A3D; color: #fff; }
+  .arrive[hidden] { display: none; }
+  .arrive .ring { flex: none; width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,.18); display: grid; place-items: center; animation: ring 1.6s ease-out infinite; }
+  .arrive svg { width: 22px; height: 22px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .arrive b { display: block; font-size: 17px; }
+  .arrive span { font-size: 14px; color: rgba(255,255,255,.9); }
+  @keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.55); } 100% { box-shadow: 0 0 0 16px rgba(255,255,255,0); } }
   .eta { font-size: 13px; font-weight: 600; color: var(--muted); }
   /* Datos */
   .row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; font-size: 15px; }
@@ -137,6 +145,7 @@
     <div id="top"><div class="card"><div class="skel" style="width:40%"></div><div class="skel" style="width:70%;height:22px"></div><div class="skel"></div><div class="skel" style="width:85%"></div></div></div>
     <div class="card" id="mapcard" hidden>
       <div class="maptop"><div><p class="sec" style="margin:0">REPARTO EN VIVO</p><div class="big" id="mapdist">—</div><p style="color:var(--muted);font-size:13.5px" id="mapinfo"></p></div></div>
+      <div class="arrive" id="arrive" role="status" aria-live="assertive" hidden><div class="ring"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div><div><b>¡Tu pedido llegó!</b><span>Tu repartidor está en el punto de entrega. Por favor sal a recibirlo.</span></div></div>
       <div id="map"></div>
     </div>
     <div id="rest"></div>
@@ -204,8 +213,13 @@
   function overlay(d, l) {
     if (!d || !l || (d.status !== "en_camino" && d.status !== "cerca")) return d;
     var to = l.delivered_at ? "entregado" : l.near_at && d.status === "en_camino" ? "cerca" : null;
-    if (!to) return d;
-    var idx = FLOW.indexOf(to), x = JSON.parse(JSON.stringify(d));
+    // 2.18.17 · Llegó: el paso «Cerca» lo dice (sal a recibirlo).
+    var here = !!(l.arrived_at && !l.delivered_at);
+    if (!to && !here) return d;
+    var x = JSON.parse(JSON.stringify(d));
+    if (here) x.steps.forEach(function (s) { if (s.key === "cerca") s.desc = "Ya llegó · sal a recibirlo"; });
+    if (!to) return x;
+    var idx = FLOW.indexOf(to);
     x.status = to;
     x.statusLabel = to === "entregado" ? "Entregado" : "Cerca de tu zona";
     var maxDone = 0;
@@ -454,7 +468,7 @@
   }
   /** «Llega en 4 min · 1.2 km por calle» (con la ruta) en lugar de la distancia en línea recta. */
   function etaText() {
-    if (!routeInfo || !live || live.delivered_at) return;
+    if (!routeInfo || !live || live.delivered_at || live.arrived_at) return;
     var mins = Math.max(1, Math.round(routeInfo.s / 60)), km = routeInfo.m < 1000 ? Math.round(routeInfo.m) + " m" : (routeInfo.m / 1000).toFixed(1) + " km";
     var dist = document.getElementById("mapdist"), info = document.getElementById("mapinfo");
     if (dist) dist.textContent = "Llega en ~" + mins + " min";
@@ -501,12 +515,19 @@
     card.hidden = false;
     var info = document.getElementById("mapinfo"), dist = document.getElementById("mapdist");
     if (l.delivered_at) { dist.textContent = "Entregado"; info.textContent = when(l.delivered_at) + (l.received_by ? " · Recibió " + l.received_by : ""); }
+    else if (l.arrived_at) { dist.textContent = "Ya llegó"; info.textContent = "Sal a recibirlo · " + when(l.arrived_at); }
     else if (l.lat == null) { dist.textContent = "Por salir"; info.textContent = "El repartidor aún no comparte su ubicación."; }
     else {
       var m = l.distance_m;
       dist.textContent = m == null ? "En camino" : m < 1000 ? "A " + m + " m" : "A " + (m / 1000).toFixed(1) + " km";
       var v = l.speed && l.speed > 1.5 ? l.speed : 8.3;
       info.textContent = (m != null ? "Llega en ~" + Math.max(1, Math.round(m / v / 60)) + " min · " : "") + "Actualizado " + ago(l.updated_at);
+    }
+    // 2.18.17 · Llegó: aviso grande (y vibra una vez si el teléfono lo permite).
+    var arr = document.getElementById("arrive"), here = !!(l.arrived_at && !l.delivered_at);
+    if (arr) {
+      if (here && arr.hidden) { try { navigator.vibrate && navigator.vibrate([200, 120, 200]); } catch (e) {} }
+      arr.hidden = !here;
     }
     if (!map) {
       map = new maplibregl.Map({
