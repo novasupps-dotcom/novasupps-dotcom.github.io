@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://yqosgsrqffiyrwpgqxag.supabase.co https://*.tile.openstreetmap.org https://unpkg.com; connect-src https://yqosgsrqffiyrwpgqxag.supabase.co; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://yqosgsrqffiyrwpgqxag.supabase.co https://*.tile.openstreetmap.org https://unpkg.com; connect-src https://yqosgsrqffiyrwpgqxag.supabase.co https://router.project-osrm.org; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#F2F2F7">
 <title>Rastreo de pedido · GGG Nova Supps</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
@@ -73,8 +73,16 @@
   .maptop { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
   .big { font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
   .driver { width: 34px; height: 34px; border-radius: 50%; background: var(--c); border: 3px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,.25); display: grid; place-items: center; }
-  .driver svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; }
+  .driver svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; transition: transform .3s; }
+  /* 2.18.16 · El carrito voltea hacia donde avanza. */
+  .driver.west svg { transform: scaleX(-1); }
   .dest { width: 18px; height: 18px; border-radius: 50%; background: var(--red); border: 3px solid #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3); }
+  /* 2.18.16 · Modo navegación (como Maps o Waze): al estar «Cerca de tu zona» el mapa crece, sigue al
+     repartidor y muestra la ruta por las calles hasta tu punto. */
+  #mapcard.nav #map { height: 62vh; min-height: 360px; }
+  #mapcard.nav .maptop { background: var(--c); color: #fff; margin: -18px -18px 0; padding: 14px 18px; border-radius: 20px 20px 0 0; }
+  #mapcard.nav .maptop .sec, #mapcard.nav #mapinfo { color: rgba(255,255,255,.88) !important; }
+  .eta { font-size: 13px; font-weight: 600; color: var(--muted); }
   /* Datos */
   .row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; font-size: 15px; }
   .row span:first-child { color: var(--muted); }
@@ -373,15 +381,84 @@
   }
 
   // ------------------------------------------------------------ mapa del reparto
-  var map = null, driver = null, dest = null, line = null, anim = null, fitted = false;
+  var map = null, driver = null, dest = null, line = null, path = null, anim = null, fitted = false, west = false;
+  // 2.18.16 · Recorrido: línea continua por donde ya pasó el repartidor (lo guarda el servidor, hasta
+  // 400 puntos) y punteada de él al punto de entrega. El carrito avanza sobre la línea de forma continua
+  // entre una lectura y la siguiente (cada ~5 s) y voltea hacia donde va.
+  var LIVE_EVERY = 5000;
+  // 2.18.16 · Ruta por las calles (OSRM, servicio público de OpenStreetMap) del repartidor a tu punto.
+  // Se vuelve a pedir cada 30 s o si el repartidor se sale de la ruta; si no hay servicio, queda la
+  // línea punteada directa.
+  var ROUTER = "https://router.project-osrm.org/route/v1/driving/";
+  var route = null, routeCase = null, routePts = null, routeAt = 0, routeBusy = false, routeInfo = null, navOn = false;
+  function nearestIdx(p) {
+    if (!routePts) return -1;
+    var best = -1, bd = Infinity, ll = L.latLng(p[0], p[1]);
+    for (var i = 0; i < routePts.length; i++) { var dd = ll.distanceTo(routePts[i]); if (dd < bd) { bd = dd; best = i; } }
+    return bd <= 80 ? best : -1;
+  }
+  function drawRoute(at) {
+    if (!routePts || !route) return;
+    var i = nearestIdx(at);
+    var rest = [at].concat(routePts.slice(i >= 0 ? i + 1 : 0));
+    route.setLatLngs(rest); routeCase.setLatLngs(rest);
+  }
+  function askRoute(from, to) {
+    if (routeBusy || !window.fetch) return;
+    routeBusy = true; routeAt = Date.now();
+    fetch(ROUTER + from[1].toFixed(6) + "," + from[0].toFixed(6) + ";" + to[1].toFixed(6) + "," + to[0].toFixed(6) + "?overview=full&geometries=geojson")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        var rt = j && j.routes && j.routes[0];
+        if (!rt || !rt.geometry || !Array.isArray(rt.geometry.coordinates)) return;
+        routePts = rt.geometry.coordinates.map(function (c) { return [Number(c[1]), Number(c[0])]; });
+        routeInfo = { m: Number(rt.distance) || 0, s: Number(rt.duration) || 0, at: Date.now() };
+        var c = getComputedStyle(document.documentElement).getPropertyValue("--c");
+        if (!route) {
+          routeCase = L.polyline(routePts, { color: "#fff", weight: 10, opacity: .95, lineCap: "round", lineJoin: "round", interactive: false }).addTo(map);
+          route = L.polyline(routePts, { color: c, weight: 6, opacity: 1, lineCap: "round", lineJoin: "round", interactive: false }).addTo(map);
+          if (path) { path.setStyle({ color: "#9AA0A6", weight: 5, opacity: .9 }); path.bringToBack(); }
+          if (line) { map.removeLayer(line); line = null; }
+          if (driver) driver.setZIndexOffset(1000);
+        }
+        drawRoute(driver ? [driver.getLatLng().lat, driver.getLatLng().lng] : from);
+        etaText();
+      })
+      .catch(function () {})
+      .then(function () { routeBusy = false; });
+  }
+  /** «Llega en 4 min · 1.2 km por calle» (con la ruta) en lugar de la distancia en línea recta. */
+  function etaText() {
+    if (!routeInfo || !live || live.delivered_at) return;
+    var mins = Math.max(1, Math.round(routeInfo.s / 60)), km = routeInfo.m < 1000 ? Math.round(routeInfo.m) + " m" : (routeInfo.m / 1000).toFixed(1) + " km";
+    var dist = document.getElementById("mapdist"), info = document.getElementById("mapinfo");
+    if (dist) dist.textContent = "Llega en ~" + mins + " min";
+    if (info) info.textContent = km + " por calle · Actualizado " + ago(live.updated_at);
+  }
+  function trailOf(l) { return (Array.isArray(l.trail) ? l.trail : []).filter(function (p) { return Array.isArray(p) && isFinite(p[0]) && isFinite(p[1]); }).map(function (p) { return [Number(p[0]), Number(p[1])]; }); }
+  function setWest(lngFrom, lngTo) {
+    if (Math.abs(lngTo - lngFrom) < 0.00003) return;
+    west = lngTo < lngFrom;
+    var el = driver && driver.getElement && driver.getElement(); var box = el && el.querySelector(".driver");
+    if (box) box.classList.toggle("west", west);
+  }
   function icon(cls, inner) { return L.divIcon({ className: "", html: '<div class="' + cls + '">' + (inner || "") + "</div>", iconSize: cls === "dest" ? [18, 18] : [34, 34], iconAnchor: cls === "dest" ? [9, 9] : [17, 17] }); }
   function glide(marker, to) {
-    var from = marker.getLatLng(), t0 = performance.now(), dur = 1500;
+    var from = marker.getLatLng(), t0 = performance.now();
+    // Avanza de forma continua hasta la siguiente lectura (sin frenar en cada punto).
+    var dur = LIVE_EVERY - 300;
     if (anim) cancelAnimationFrame(anim);
+    setWest(from.lng, to[1]);
     var step = function (now) {
-      var k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
-      marker.setLatLng([from.lat + (to[0] - from.lat) * e, from.lng + (to[1] - from.lng) * e]);
+      var k = Math.min(1, (now - t0) / dur);
+      var at = [from.lat + (to[0] - from.lat) * k, from.lng + (to[1] - from.lng) * k];
+      marker.setLatLng(at);
+      // La línea recorrida y la punteada siguen al carrito.
+      if (path) { var ps = path.getLatLngs(); if (ps.length) { ps[ps.length - 1] = L.latLng(at[0], at[1]); path.setLatLngs(ps); } }
+      if (line && dest) line.setLatLngs([at, dest.getLatLng()]);
+      if (route) drawRoute(at);
       if (k < 1) anim = requestAnimationFrame(step);
+      else if (map && (navOn || !map.getBounds().pad(-0.15).contains(marker.getLatLng()))) map.panTo(marker.getLatLng(), { animate: true });
     };
     anim = requestAnimationFrame(step);
   }
@@ -406,12 +483,30 @@
     }
     if (l.dest_lat != null && !dest) dest = L.marker([l.dest_lat, l.dest_lng], { icon: icon("dest") }).addTo(map);
     if (l.lat != null) {
+      var c = getComputedStyle(document.documentElement).getPropertyValue("--c");
+      // Recorrido hasta ahora (el último punto es el carrito; se mueve con él).
+      var tr = trailOf(l);
+      var start = driver ? driver.getLatLng() : L.latLng(l.lat, l.lng);
+      var pts = tr.concat([[start.lat, start.lng]]);
+      if (!path) path = L.polyline(pts, { color: c, weight: 5, opacity: .85, lineCap: "round", lineJoin: "round" }).addTo(map);
+      else path.setLatLngs(pts);
       if (!driver) driver = L.marker([l.lat, l.lng], { icon: icon("driver", svg(ICONS.en_camino)), zIndexOffset: 1000 }).addTo(map);
-      else glide(driver, [l.lat, l.lng]);
-      if (dest) {
-        if (!line) line = L.polyline([[l.lat, l.lng], [l.dest_lat, l.dest_lng]], { color: getComputedStyle(document.documentElement).getPropertyValue("--c"), weight: 3, dashArray: "6 8", opacity: .7 }).addTo(map);
-        else line.setLatLngs([[l.lat, l.lng], [l.dest_lat, l.dest_lng]]);
+      if (dest && !route) {
+        if (!line) line = L.polyline([[start.lat, start.lng], [l.dest_lat, l.dest_lng]], { color: c, weight: 3, dashArray: "6 8", opacity: .55 }).addTo(map);
       }
+      if (tr.length >= 2) setWest(tr[tr.length - 2][1], tr[tr.length - 1][1]);
+      glide(driver, [l.lat, l.lng]);
+      // Ruta por las calles: la primera vez, cada 30 s o si se salió de la ruta.
+      if (dest && (!routePts || Date.now() - routeAt > 30000 || nearestIdx([l.lat, l.lng]) < 0)) askRoute([l.lat, l.lng], [l.dest_lat, l.dest_lng]);
+      else etaText();
+      // Cerca de tu zona: modo navegación (mapa grande que sigue al repartidor).
+      var nav = st === "cerca" && !l.delivered_at;
+      card.classList.toggle("nav", nav);
+      if (nav && !navOn) {
+        navOn = true;
+        setTimeout(function () { map.invalidateSize(); map.setView([l.lat, l.lng], 16, { animate: true }); }, 80);
+        try { card.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {}
+      } else if (!nav) navOn = false;
       if (!fitted) { map.fitBounds(dest ? L.latLngBounds([[l.lat, l.lng], [l.dest_lat, l.dest_lng]]).pad(0.35) : L.latLngBounds([[l.lat, l.lng]]).pad(0.5)); fitted = true; }
     } else if (dest && !fitted) { map.setView([l.dest_lat, l.dest_lng], 14); fitted = true; }
     setTimeout(function () { map.invalidateSize(); }, 50);
@@ -460,7 +555,7 @@
   if (demo) demoRun(); else load();
   setInterval(function () { if (!demo) load(); }, 45000);
   // Con reparto en vivo, la ubicación se consulta cada 8 s mientras la página está a la vista.
-  setInterval(function () { if (!demo && !document.hidden && live && live.active) loadLive(); }, 8000);
+  setInterval(function () { if (!demo && !document.hidden && live && live.active) loadLive(); }, LIVE_EVERY);
   setInterval(tick, 1000);
   document.addEventListener("visibilitychange", function () { if (!demo && !document.hidden) load(); });
 })();
