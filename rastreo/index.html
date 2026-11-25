@@ -54,7 +54,12 @@
   .labels div.on { color: var(--ink); font-weight: 600; }
   .labels div.cur { color: var(--ink); font-weight: 800; }
   /* Línea de tiempo */
-  .timeline { margin-top: 22px; }
+  .timeline { margin-top: 12px; }
+  .tlwrap { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 4px; }
+  .tlwrap summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-size: 15px; font-weight: 600; color: var(--ink); list-style: none; }
+  .tlwrap summary::-webkit-details-marker { display: none; }
+  .tlwrap summary::after { content: ""; width: 8px; height: 8px; margin-left: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform .2s; }
+  .tlwrap[open] summary::after { transform: rotate(-135deg) translateY(-2px); }
   .tl { display: flex; gap: 12px; min-height: 52px; }
   .anim .tl { opacity: 0; transform: translateY(6px); animation: in .5s forwards; }
   @keyframes in { to { opacity: 1; transform: none; } }
@@ -205,6 +210,9 @@
   var safePay = function (u) { return /^https:\/\/([a-z0-9-]+\.)*(mercadopago\.com(\.mx)?|mercadolibre\.com|mpago\.la)\//i.test(String(u || "")) ? String(u) : ""; };
   var demo = params.get("demo");
   var top = document.getElementById("top"), rest = document.getElementById("rest");
+  var tlOpen = false;
+  // El detalle se vuelve a dibujar con cada actualización: se recuerda si estaba abierto.
+  document.addEventListener("toggle", function (e) { if (e.target && e.target.id === "tlwrap") tlOpen = e.target.open; }, true);
   var data = null, live = null, firstPaint = true, detailsOpen = false, shownSig = "", shown = null, lastProgress = 0;
   var FLOW = ["solicitado", "pagado", "almacen", "en_camino", "cerca", "entregado"];
 
@@ -336,10 +344,10 @@
       : st === "entregado" ? '<div class="banner ok">' + (d.paid > 0 && d.balance <= 0 ? "Pedido entregado y pagado ✓" : "Pedido entregado ✓") + "</div>" : "";
     top.innerHTML =
       '<div class="card hero' + (firstPaint ? " anim" : "") + (dead ? " dead" : "") + '"><div class="folio">' + (d.code && d.code !== d.folio ? "PEDIDO No. " + esc(d.code) : "ORDEN " + esc(d.folio)) + "</div><h1>" + esc(headline) + "</h1><p>" + esc(d.distributor) + (sub ? " · " + esc(sub) : "") + "</p>" +
-      '<span class="pill">' + esc(d.statusLabel) + "</span>" +
+      // 2.18.22 · Una sola barra de avance: sin píldora repetida y el detalle con fechas, plegable.
       '<div class="track"><div class="lane"><div class="rail"></div><div class="fill" id="fill"></div><div class="truck" id="truck"><span>' + svg(ICONS.en_camino) + "</span></div></div>" +
       '<div class="nodes">' + nodes + '</div></div><div class="labels">' + labels + "</div>" + banner +
-      '<div class="timeline">' + timeline + "</div></div>" + (st === "solicitado" && !d.credit && !d.payOnDelivery && d.balance > 0 && d.paid === 0 ? '<div class="card" id="validity"></div>' : "");
+      '<details class="tlwrap" id="tlwrap"' + (tlOpen ? " open" : "") + '><summary>Ver detalle y fechas</summary><div class="timeline">' + timeline + "</div></details></div>" + (st === "solicitado" && !d.credit && !d.payOnDelivery && d.balance > 0 && d.paid === 0 ? '<div class="card" id="validity"></div>' : "");
     var ship = "";
     if (d.carrier) {
       ship = '<div class="card"><p class="sec">ENVÍO</p>' +
