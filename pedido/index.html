@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://yqosgsrqffiyrwpgqxag.supabase.co; connect-src https://yqosgsrqffiyrwpgqxag.supabase.co; font-src 'self' data:; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://yqosgsrqffiyrwpgqxag.supabase.co https://tile.openstreetmap.org https://cdnjs.cloudflare.com; connect-src https://yqosgsrqffiyrwpgqxag.supabase.co; font-src 'self' data:; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#FFFFFF">
 <title>Arma tu pedido · GGG Nova Supps</title>
 <meta name="description" content="Suplementos originales con entrega local y envíos a todo México. Arma tu pedido en línea y te lo confirmamos por WhatsApp.">
@@ -290,6 +290,16 @@
   .opts.freemode { margin: 4px 0 10px; }
   .pay.ship.free { background: var(--greenSoft); box-shadow: inset 0 0 0 2px var(--green); cursor: default; }
   .pay.ship.free .zp { color: var(--green); }
+  /* 2.18.15 · Punto exacto de entrega en el mapa (envío local). */
+  .pin { margin: 4px 0 10px; display: flex; flex-direction: column; gap: 8px; }
+  .pinbtn { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; padding: 10px 14px; border: 0; border-radius: 14px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); font-size: 15px; font-weight: 600; text-align: left; }
+  .pinbtn.set { box-shadow: inset 0 0 0 2px var(--ink); }
+  .pinbtn svg { flex: none; color: var(--red); }
+  .pinbtn small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 500; }
+  #pinmap { height: 260px; border-radius: 14px; overflow: hidden; background: var(--line); z-index: 0; }
+  .pinrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .pinrow button { min-height: 44px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); font-size: 14px; font-weight: 600; }
+  .pinrow .hint { margin: 0; flex: 1; min-width: 140px; }
   .colpick { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 10px 14px; border: 0; border-radius: 14px; background: var(--paper); box-shadow: inset 0 0 0 2px var(--ink); color: var(--ink); text-align: left; font-size: 16px; font-weight: 700; }
   .colpick span { flex: 1; min-width: 0; }
   .colpick small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 500; }
@@ -495,13 +505,73 @@
   /** Pago al entregar: solo con envío local; por paquetería, por adelantado. */
   function codAllowed(q) { return deliveryMode(q) !== "paqueteria"; }
   var lugarOpen = false;
+  // ------------------------------------------------- 2.18.15 · punto exacto en el mapa (envío local)
+  // Opcional: con él, quien te entrega te sigue en vivo hasta ese punto y te avisa al estar cerca.
+  // El mapa (Leaflet + OpenStreetMap) se carga solo al abrirlo.
+  var pinOpen = false, pinMap = null, pinMarker = null, leafletP = null;
+  var PIN_CENTER = [19.2826, -99.6557];
+  function pinGeo() { var m = /^(-?\d{1,2}\.\d{3,7}),(-?\d{1,3}\.\d{3,7})$/.exec(String(contact.geo || "")); return m ? [Number(m[1]), Number(m[2])] : null; }
+  function pinHtml() {
+    var g = pinGeo();
+    var ico = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
+    if (!pinOpen)
+      return '<div class="pin"><button type="button" class="pinbtn' + (g ? " set" : "") + '" data-act="pinopen">' + ico + "<span>" +
+        (g ? "Punto exacto fijado ✓<small>Toca para cambiarlo en el mapa</small>" : "Fijar el punto exacto en el mapa (opcional)<small>Así te seguimos en vivo y te avisamos cuando estemos cerca</small>") + "</span></button></div>";
+    return '<div class="pin"><div id="pinmap" role="application" aria-label="Mapa: toca para fijar el punto de entrega"></div>' +
+      '<div class="pinrow"><button type="button" data-act="pinme">Usar mi ubicación</button>' + (g ? '<button type="button" data-act="pinclear">Quitar</button>' : "") +
+      '<button type="button" data-act="pindone">Listo</button><p class="hint" id="pin-hint" aria-live="polite">' + (g ? "Arrastra el pin si hace falta." : "Toca el mapa donde te entregamos.") + "</p></div></div>";
+  }
+  function loadLeaflet() {
+    if (window.L) return Promise.resolve(window.L);
+    if (leafletP) return leafletP;
+    leafletP = new Promise(function (ok, fail) {
+      var css = document.createElement("link"); css.rel = "stylesheet"; css.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"; document.head.appendChild(css);
+      var js = document.createElement("script"); js.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
+      js.onload = function () { ok(window.L); }; js.onerror = function () { leafletP = null; fail(new Error("mapa")); };
+      document.head.appendChild(js);
+    });
+    return leafletP;
+  }
+  function setPin(lat, lng) {
+    contact.geo = lat.toFixed(6) + "," + lng.toFixed(6); save();
+    var h = $("pin-hint"); if (h) h.textContent = "Punto fijado ✓ Arrastra el pin si hace falta.";
+  }
+  /** Monta el mapa en #pinmap (se vuelve a montar cada vez que la tarjeta de envío se redibuja). */
+  function mountPin() {
+    var el = $("pinmap"); if (!pinOpen || !el) return;
+    loadLeaflet().then(function (L) {
+      if (!$("pinmap") || $("pinmap") !== el) return;
+      if (pinMap) { try { pinMap.remove(); } catch (e) {} pinMap = null; pinMarker = null; }
+      var g = pinGeo();
+      pinMap = L.map(el, { zoomControl: true, attributionControl: true }).setView(g || PIN_CENTER, g ? 17 : 13);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(pinMap);
+      var put = function (ll) {
+        if (pinMarker) pinMarker.setLatLng(ll);
+        else { pinMarker = L.marker(ll, { draggable: true, keyboard: false }).addTo(pinMap); pinMarker.on("dragend", function () { var p = pinMarker.getLatLng(); setPin(p.lat, p.lng); }); }
+        setPin(ll.lat, ll.lng);
+      };
+      if (g) put(L.latLng(g[0], g[1]));
+      pinMap.on("click", function (e) { put(e.latlng); });
+      pinMap._novaPut = put;
+    }).catch(function () { var h = $("pin-hint"); if (h) h.textContent = "No se pudo cargar el mapa. Revisa tu internet; también puedes seguir sin fijar el punto."; });
+  }
+  function pinMe() {
+    var h = $("pin-hint");
+    if (!navigator.geolocation) { if (h) h.textContent = "Tu navegador no comparte la ubicación: toca el mapa."; return; }
+    if (h) h.textContent = "Buscando tu ubicación…";
+    navigator.geolocation.getCurrentPosition(function (p) {
+      if (!pinMap || !window.L) return;
+      var ll = window.L.latLng(p.coords.latitude, p.coords.longitude);
+      pinMap.setView(ll, 17); if (pinMap._novaPut) pinMap._novaPut(ll);
+    }, function () { if (h) h.textContent = "No pudimos usar tu ubicación (permiso negado): toca el mapa donde te entregamos."; }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+  }
   /** Lista de lugares plegable: con uno elegido se ve solo ese; al tocarlo se despliega. */
   function lugaresHtml() {
     var list = lugares(), picked = list.indexOf(contact.lugar) >= 0 ? contact.lugar : "";
     if (picked && !lugarOpen)
-      return '<div class="lugar"><label>Lugar de entrega *</label><button type="button" class="colpick" data-act="lugaropen" aria-expanded="false" aria-label="Lugar de entrega ' + esc(picked) + '. Toca para cambiarlo"><span>' + esc(picked) + "</span><em>Cambiar</em>" + ICON_DOWN + "</button></div>";
+      return '<div class="lugar"><label>Lugar de entrega *</label><button type="button" class="colpick" data-act="lugaropen" aria-expanded="false" aria-label="Lugar de entrega ' + esc(picked) + '. Toca para cambiarlo"><span>' + esc(picked) + "</span><em>Cambiar</em>" + ICON_DOWN + "</button></div>" + pinHtml();
     return '<div class="lugar"><label>Lugar de entrega *</label><div class="opts" id="lugar-opts" role="radiogroup" aria-label="Lugares de entrega local">' +
-      list.map(function (n, i) { var on = n === picked; return '<label class="opt' + (on ? " on" : "") + '"><input type="radio" name="lugar" data-act="lugarpick" value="' + i + '"' + (on ? " checked" : "") + "><span>" + esc(n) + "</span></label>"; }).join("") + "</div></div>";
+      list.map(function (n, i) { var on = n === picked; return '<label class="opt' + (on ? " on" : "") + '"><input type="radio" name="lugar" data-act="lugarpick" value="' + i + '"' + (on ? " checked" : "") + "><span>" + esc(n) + "</span></label>"; }).join("") + "</div></div>" + pinHtml();
   }
   var ZONES = {
     paqueteria: { title: "Envío por paquetería", sub: "3 a 5 días hábiles · a todo México", cost: envioForaneo },
@@ -875,6 +945,10 @@
       else if (act === "minus") setQty(id, (cart[id] || 0) - 1);
       else if (act === "remove") setQty(id, 0);
       else if (act === "open") openDetail(id);
+      else if (act === "pinopen") { pinOpen = true; renderReviewTotals(); }
+      else if (act === "pindone") { pinOpen = false; renderReviewTotals(); }
+      else if (act === "pinclear") { delete contact.geo; save(); pinOpen = false; renderReviewTotals(); }
+      else if (act === "pinme") pinMe();
       else if (act === "lugaropen") {
         lugarOpen = true; renderReviewTotals();
         var ls = document.querySelector("#lugar-opts .opt.on"); if (ls) ls.scrollIntoView({ block: "nearest" });
@@ -1232,6 +1306,7 @@
           return '<label class="pay ship' + (on ? " on" : "") + '"><input type="radio" name="zone" data-act="zone" value="' + k + '"' + (on ? " checked" : "") + "><span>" + esc(z.title) + "<small>" + esc(z.sub) + '</small></span><b class="zp">' + (cost ? "+" + pesos(cost) + " MXN" : "Sin costo") + "</b></label>" +
             (k === "local" && on ? lugaresHtml() : "");
         }).join("");
+    mountPin();
     // Pago al entregar solo con entrega local.
     var cod = codAllowed(q);
     Array.prototype.forEach.call(document.querySelectorAll('input[name="pay"]'), function (inp) {
@@ -1578,13 +1653,15 @@
       ? "[dir:" + ["street", "col", "addr2", "city", "state", "cp"].map(function (k) { return String(contact[k] || "").replace(/[\]~|]/g, " ").trim(); }).join("~") + "]"
       : "";
     var totalBps = (t.q.tierBps || 0) + (t.q.volumeBps || 0); var discPct = totalBps ? (totalBps / 100) : 0; var discAmt = (t.q.tierDiscount || 0) + (t.q.volumeDiscount || 0); var dm = deliveryMode(t.q); var zoneLbl = (t.q.freeShipping ? "Envío gratis " + (dm === "local" ? "local" : "por paquetería") + " (pedido desde " + money(envioGratis()) + ")" : zoneInfo(dm, t.q.immediate) ? zoneInfo(dm, t.q.immediate).title + " (" + zoneInfo(dm, t.q.immediate).sub.split(" · ")[0] + ")" : "") + (dm === "local" && contact.lugar ? " · Lugar de entrega: " + contact.lugar : "");
+    // 2.18.15 · Punto exacto que fijó en el mapa (solo envío local): la app lo usa para el reparto en vivo.
+    var geoTag = dm === "local" && pinGeo() ? "[geo:" + pinGeo()[0].toFixed(6) + "," + pinGeo()[1].toFixed(6) + "]" : "";
     var envTag = "[envio:" + (dm === "local" || dm === "paqueteria" ? dm : "") + "~" + (dm === "local" ? String(contact.lugar || "").replace(/[\]~|\[]/g, " ").trim() : "") + "~" + (t.q.freeShipping ? 0 : Math.round(t.q.shippingCost || 0)) + "~" + (t.q.freeShipping ? 1 : 0) + "]";
     var body = {
       p_token: token,
       p_items: items,
       p_contact: l.general ? contact : pick,
       // 2.18.1 · Envío en una etiqueta que la app lee sin interpretar el texto: [envio:modo~lugar~centavos~gratis].
-      p_notes: [envTag, notes, extraNote, "Forma de pago: " + payLabel, "Entrega estimada: " + deliveryEta(t.q), paymentNote, "Envío: " + zoneLbl + " " + (t.q.freeShipping ? "sin costo" : money(t.q.shippingCost)), "Subtotal: " + money(t.q.subtotal), "Descuento (" + discPct + "%): -" + money(discAmt), "Total de productos: " + money(t.q.productsTotal), "Total final: " + money(t.q.total), dirTag].filter(Boolean).join(" | ")
+      p_notes: [envTag, notes, extraNote, "Forma de pago: " + payLabel, "Entrega estimada: " + deliveryEta(t.q), paymentNote, "Envío: " + zoneLbl + " " + (t.q.freeShipping ? "sin costo" : money(t.q.shippingCost)), "Subtotal: " + money(t.q.subtotal), "Descuento (" + discPct + "%): -" + money(discAmt), "Total de productos: " + money(t.q.productsTotal), "Total final: " + money(t.q.total), dirTag, geoTag].filter(Boolean).join(" | ")
     };
     if (tsAnswer) body.turnstile = tsAnswer;
     var payOnline = contact.pay === "tarjeta_linea";
