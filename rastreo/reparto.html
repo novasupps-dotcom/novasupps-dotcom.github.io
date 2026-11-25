@@ -78,6 +78,8 @@
       (hasDest ? "Distancia al cliente" : "La tienda no fijó la ubicación del cliente; el cliente verá tu ubicación de todas formas.") + "</p>" +
       '<div id="map"></div>' +
       '<button class="btn" id="go">Compartir mi ubicación</button>' +
+      // 2.18.17 · «Ya llegué»: el cliente recibe «Tu pedido llegó, sal a recibirlo».
+      '<div id="arrBox">' + (live.arrived_at ? arrivedHtml() : '<button class="btn green" id="arr">Ya llegué · avisar al cliente</button>') + "</div>" +
       (hasDest ? '<a class="btn ghost" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=' + live.dest_lat + "," + live.dest_lng + '">Abrir ruta en Google Maps</a>' : "") +
       "</div>" +
       '<div class="card"><p class="sec">CONFIRMAR ENTREGA</p><p class="muted">Cuando entregues, escribe quién recibió y confirma. Se cierra el reparto y el cliente lo ve como entregado.</p>' +
@@ -85,6 +87,8 @@
       '<button class="btn green" id="done">Confirmar entrega</button><div id="doneMsg"></div></div>';
     document.getElementById("go").onclick = toggle;
     document.getElementById("done").onclick = deliver;
+    var ab = document.getElementById("arr");
+    if (ab) ab.onclick = arrive;
     drawMap();
   }
 
@@ -109,6 +113,26 @@
       else map.jumpTo({ center: [lng, lat], zoom: 15 });
       fitted = true;
     }
+  }
+  function arrivedHtml() { return '<div class="ok">✓ El cliente ya sabe que llegaste: sale a recibirlo</div>'; }
+  function showArrived() {
+    if (live) live.arrived_at = live.arrived_at || new Date().toISOString();
+    var box = document.getElementById("arrBox");
+    if (box) box.innerHTML = arrivedHtml();
+  }
+  function arrive() {
+    var b = document.getElementById("arr");
+    if (b) { b.disabled = true; b.textContent = "Avisando…"; }
+    rpc("b2b_live_arrive", { p_token: token, p_key: key })
+      .then(function (r) {
+        if (r && r.ok) return showArrived();
+        if (b) { b.disabled = false; b.textContent = "Ya llegué · avisar al cliente"; }
+        setState("err", r && r.code === "closed" ? "El reparto ya se cerró" : "No se pudo avisar · intenta de nuevo");
+      })
+      .catch(function () {
+        if (b) { b.disabled = false; b.textContent = "Ya llegué · avisar al cliente"; }
+        setState("err", "Sin conexión · intenta de nuevo");
+      });
   }
   function setState(cls, text) {
     var el = document.getElementById("state");
@@ -138,8 +162,9 @@
         setState("on", "Compartiendo ubicación · " + new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
         if (r.distance_m != null) {
           document.getElementById("dist").textContent = fmtDist(r.distance_m);
-          document.getElementById("info").textContent = r.near ? "Ya estás cerca: el cliente recibió el aviso" : "Distancia al cliente";
+          document.getElementById("info").textContent = r.arrived ? "Llegaste: se avisó al cliente que salga" : r.near ? "Ya estás cerca: el cliente recibió el aviso" : "Distancia al cliente";
         }
+        if (r.arrived && live && !live.arrived_at) showArrived();
       })
       .catch(function () { setState("err", "Sin conexión · reintentando"); });
   }
